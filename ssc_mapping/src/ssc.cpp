@@ -11,12 +11,6 @@
 
 #include <ssc_msgs/SSCGrid.h>
 
-std::unique_ptr<voxblox::TsdfServer> tsdf_server;
-
-void SSCCallback(const std_msgs::Float32MultiArray::ConstPtr& msg)
-{
-  ROS_INFO("I heard:Message Received");
-}
 
 namespace voxblox {
 
@@ -41,6 +35,13 @@ class SSCMap {
         block_size_ = config.ssc_voxel_size * config.ssc_voxels_per_side;
     }
 
+    Layer<SSCOccupancyVoxel>* getSSCLayerPtr() { return ssc_layer_.get(); }
+    const Layer<SSCOccupancyVoxel>* getSSCLayerConstPtr() const { return ssc_layer_.get(); }
+    const Layer<SSCOccupancyVoxel>& getSSCLayer() const { return *ssc_layer_; }
+
+    FloatingPoint block_size() const { return block_size_; }
+    FloatingPoint voxel_size() const { return ssc_layer_->voxel_size(); }
+
     FloatingPoint block_size_;
     Layer<SSCOccupancyVoxel>::Ptr ssc_layer_;
 };
@@ -52,14 +53,49 @@ class SSCServer {
     SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private, const SSCMap::Config& config)
         : nh_(nh), nh_private_(nh_private) {
         ssc_map_.reset(new SSCMap(config));
-        ssc_map_sub_ = nh_.subscribe("ssc2", 1, &SSCServer::sscCallback, this);
+        ssc_map_sub_ = nh_.subscribe("ssc", 1, &SSCServer::sscCallback, this);
     }
 
     void sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
-        ROS_INFO("I heard:Message Received");
-        // tf::StampedTransform transform;
-        // tf_listener_.lookupTransform("/turtle2", "/turtle1", msg->header.stamp, transform);
-        std::cout<<msg->frame<<std::endl;
+
+        std::cout<<"frame:"<<msg->frame<<std::endl;
+        std::cout<<"Origin_x:"<<msg->origin_x<<std::endl;
+        std::cout<<"Origin_y:"<<msg->origin_y<<std::endl;
+        std::cout<<"Origin_z:"<<msg->origin_z<<std::endl;
+
+        // std::cout<<"depth:"<<msg->depth<<std::endl;
+        // std::cout<<"width:"<<msg->width<<std::endl;
+        // std::cout<<"height:"<<msg->height<<std::endl;
+
+        // todo - resize voxels to full size? Resize voxel grid from 64x36x64 to 240x144x240
+
+        // completions are in odometry frame
+        for (size_t x = 0; x < msg->depth; x++) {
+            for (size_t y = 0; y < msg->height; y++) {
+                for (size_t z = 0; z < msg->width; z++) {
+                    size_t idx = x * msg->width * msg->height + y * msg->width + z;
+                    uint cls = msg->data[idx];
+                    voxblox::GlobalIndex voxelIdx(x + msg->origin_x, y + msg->origin_y, z + msg->origin_z);
+                    //voxblox::SSCOccupancyVoxel* voxel = ssc_map_->getSSCLayerPtr()->getVoxelPtrByGlobalIndex(voxelIdx);
+                    voxblox::SSCOccupancyVoxel * voxel = ssc_map_->getSSCLayerPtr()->getVoxelPtrByGlobalIndex(voxelIdx);
+                    
+                    // check if the block containing the voxel exists.
+                    if (voxel == nullptr) {
+                        //ssc_map_->getSSCLayerPtr()->a
+                        voxblox::BlockIndex block_idx = getBlockIndexFromGlobalVoxelIndex(voxelIdx, 1.0/ ssc_map_->getSSCLayerPtr()->voxels_per_side());
+                        auto block = ssc_map_->getSSCLayerPtr()->allocateBlockPtrByIndex(block_idx);
+                         const VoxelIndex local_voxel_idx =  getLocalFromGlobalVoxelIndex(voxelIdx, ssc_map_->getSSCLayerPtr()->voxels_per_side());
+                        voxel = &block->getVoxelByVoxelIndex(local_voxel_idx);
+                    }
+
+                    if (!voxel->observed) {
+                        voxel->label = cls;
+                        voxel->class_confidence = 1.0;// todo - use confidence weight fusion like in SCFusion Paper
+                        voxel->observed = true;
+                    }
+                }
+            }
+        }
     }
 
     std::shared_ptr<SSCMap> ssc_map_;
@@ -83,7 +119,6 @@ std::string SSCMap::Config::print() const {
 }  // namespace voxblox
 
 int main(int argc, char **argv) {
-    std::cout<<"Hello World!"<<std::endl;
     ros::init(argc, argv, "ssc_mapping");
 
     ros::NodeHandle nh("");
