@@ -1,7 +1,7 @@
 # origin of occupancy grid
-int32 origin_x
-int32 origin_y
-int32 origin_z
+float32 origin_x
+float32 origin_y
+float32 origin_z
 
 # reference frame of the grid
 string frame
@@ -11,4 +11,4 @@ uint32 height
 uint32 depth
 
 # Voxel data packed in 4-byte chunks to better mirror protobuf serialization.
-uint32[] data
+float32[] data
