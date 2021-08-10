@@ -13,6 +13,8 @@
 
 #include <ssc_msgs/SSCGrid.h>
 
+#include <glog/logging.h>
+
 namespace voxblox {
 
 struct SSCOccupancyVoxel {
@@ -58,6 +60,8 @@ class SSCServer {
         : nh_(nh), nh_private_(nh_private) {
         ssc_map_.reset(new SSCMap(config));
         ssc_map_sub_ = nh_.subscribe("ssc", 1, &SSCServer::sscCallback, this);
+        ssc_pointcloud_pub_ =  nh_.advertise<pcl::PointCloud<pcl::PointXYZRGB> >(
+          "occupancy_pointcloud", 1, true);
     }
 
     void sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
@@ -69,7 +73,7 @@ class SSCServer {
         // todo - resize voxels to full size? Resize voxel grid from 64x36x64 to 240x144x240
         // todo - update the  ssc_msgs::SSCGrid to contain the scale instead of hard coding
         Layer<SSCOccupancyVoxel> temp_layer(ssc_map_->getSSCLayerPtr()->voxel_size() * 4,
-                                            ssc_map_->getSSCLayerPtr()->block_size() / 4);
+                                            (ssc_map_->getSSCLayerPtr()->block_size()/ssc_map_->getSSCLayerPtr()->voxel_size()) / 4);
 
         // completions are in odometry frame
         // Note: numpy flattens an array (x,y,z) such that
@@ -101,7 +105,17 @@ class SSCServer {
                 for (size_t z = 0; z < msg->width; z++) {
                     size_t idx = x * msg->width * msg->height + y * msg->width + z;
                     uint cls = msg->data[idx];
-                    GlobalIndex voxelIdx(x + msg->origin_x, y + msg->origin_y, z + msg->origin_z);
+
+                    // transform from grid coordinate system to world coordinate system
+                    uint32_t world_orient_x = z; // still uses scale of grid though rotation is in world coords
+                    uint32_t world_orient_y = x;
+                    uint32_t world_orient_z = y;
+
+                    auto grid_origin_index = getGridIndexFromOriginPoint<GlobalIndex>(Point(msg->origin_x, msg->origin_y, msg->origin_z), temp_layer.voxel_size_inv());
+
+                    GlobalIndex voxelIdx(world_orient_x , world_orient_y , world_orient_z);
+                    voxelIdx += grid_origin_index;
+                    
                     // voxblox::SSCOccupancyVoxel* voxel =
                     // ssc_map_->getSSCLayerPtr()->getVoxelPtrByGlobalIndex(voxelIdx);
                     SSCOccupancyVoxel* voxel = temp_layer.getVoxelPtrByGlobalIndex(voxelIdx);
@@ -110,7 +124,7 @@ class SSCServer {
                     if (voxel == nullptr) {
                         // ssc_map_->getSSCLayerPtr()->a
                         BlockIndex block_idx =
-                            getBlockIndexFromGlobalVoxelIndex(voxelIdx, 1.0 / temp_layer.voxels_per_side());
+                            getBlockIndexFromGlobalVoxelIndex(voxelIdx, temp_layer.voxels_per_side_inv());
                         auto block = temp_layer.allocateBlockPtrByIndex(block_idx);
                         const VoxelIndex local_voxel_idx =
                             getLocalFromGlobalVoxelIndex(voxelIdx, temp_layer.voxels_per_side());
@@ -128,6 +142,8 @@ class SSCServer {
 
         // merge the layer into the map. Used to upsample the predictions
         mergeLayerAintoLayerB(temp_layer, ssc_map_->getSSCLayerPtr());
+
+        publishSSCOccupancyPoints(); 
     }
 
     void publishSSCOccupancyPoints() {
@@ -246,7 +262,7 @@ class SSCColorMap : public IdColorMap {
 bool visualizeSSCOccupancyVoxels(const SSCOccupancyVoxel& voxel, const Point& /*coord*/, Color* color) {
     CHECK_NOTNULL(color);
     static SSCColorMap map;
-    if (voxel.observed) {
+    if (voxel.observed && voxel.label > 0.f) {
         *color = map.colorLookup(voxel.label);
         return true;
     }
@@ -263,6 +279,9 @@ void createPointcloudFromSSCLayer(const Layer<SSCOccupancyVoxel>& layer,
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "ssc_mapping");
+    google::InitGoogleLogging(argv[0]);
+    google::InstallFailureSignalHandler();
+    google::ParseCommandLineFlags(&argc, &argv, false);
 
     ros::NodeHandle nh("");
     ros::NodeHandle nh_private("~");
