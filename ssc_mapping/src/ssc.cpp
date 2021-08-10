@@ -72,8 +72,8 @@ class SSCServer {
 
         // todo - resize voxels to full size? Resize voxel grid from 64x36x64 to 240x144x240
         // todo - update the  ssc_msgs::SSCGrid to contain the scale instead of hard coding
-        Layer<SSCOccupancyVoxel> temp_layer(ssc_map_->getSSCLayerPtr()->voxel_size() * 4,
-                                            (ssc_map_->getSSCLayerPtr()->block_size()/ssc_map_->getSSCLayerPtr()->voxel_size()) / 4);
+        //Layer<SSCOccupancyVoxel> temp_layer(ssc_map_->getSSCLayerPtr()->voxel_size() * 4,
+        //                                    (ssc_map_->getSSCLayerPtr()->block_size()/ssc_map_->getSSCLayerPtr()->voxel_size()) / 4);
 
         // completions are in odometry frame
         // Note: numpy flattens an array (x,y,z) such that
@@ -111,27 +111,28 @@ class SSCServer {
                     uint32_t world_orient_y = x;
                     uint32_t world_orient_z = y;
 
-                    auto grid_origin_index = getGridIndexFromOriginPoint<GlobalIndex>(Point(msg->origin_x, msg->origin_y, msg->origin_z), temp_layer.voxel_size_inv());
+                    auto grid_origin_index = getGridIndexFromOriginPoint<GlobalIndex>(Point(msg->origin_x, msg->origin_y, msg->origin_z), ssc_map_->getSSCLayerPtr()->voxel_size_inv());
 
                     GlobalIndex voxelIdx(world_orient_x , world_orient_y , world_orient_z);
                     voxelIdx += grid_origin_index;
                     
                     // voxblox::SSCOccupancyVoxel* voxel =
                     // ssc_map_->getSSCLayerPtr()->getVoxelPtrByGlobalIndex(voxelIdx);
-                    SSCOccupancyVoxel* voxel = temp_layer.getVoxelPtrByGlobalIndex(voxelIdx);
+                    SSCOccupancyVoxel* voxel = ssc_map_->getSSCLayerPtr()->getVoxelPtrByGlobalIndex(voxelIdx);
 
                     // check if the block containing the voxel exists.
                     if (voxel == nullptr) {
                         // ssc_map_->getSSCLayerPtr()->a
                         BlockIndex block_idx =
-                            getBlockIndexFromGlobalVoxelIndex(voxelIdx, temp_layer.voxels_per_side_inv());
-                        auto block = temp_layer.allocateBlockPtrByIndex(block_idx);
+                            getBlockIndexFromGlobalVoxelIndex(voxelIdx, ssc_map_->getSSCLayerPtr()->voxels_per_side_inv());
+                        auto block = ssc_map_->getSSCLayerPtr()->allocateBlockPtrByIndex(block_idx);
                         const VoxelIndex local_voxel_idx =
-                            getLocalFromGlobalVoxelIndex(voxelIdx, temp_layer.voxels_per_side());
+                            getLocalFromGlobalVoxelIndex(voxelIdx, ssc_map_->getSSCLayerPtr()->voxels_per_side());
                         voxel = &block->getVoxelByVoxelIndex(local_voxel_idx);
                     }
 
-                    if (!voxel->observed) {
+                    // Fuse new measurements only if voxel is not obsrverd or is observed but empty 
+                    if (!voxel->observed || (voxel->observed && voxel->label == 0)) {
                         voxel->label = cls;
                         voxel->class_confidence = 1.0;  // todo - use confidence weight fusion like in SCFusion Paper
                         voxel->observed = true;
@@ -141,7 +142,7 @@ class SSCServer {
         }
 
         // merge the layer into the map. Used to upsample the predictions
-        mergeLayerAintoLayerB(temp_layer, ssc_map_->getSSCLayerPtr());
+        //mergeLayerAintoLayerB(temp_layer, ssc_map_->getSSCLayerPtr());
 
         publishSSCOccupancyPoints(); 
     }
@@ -289,7 +290,7 @@ int main(int argc, char **argv) {
     //tsdf_server.reset(new voxblox::TsdfServer(nh, nh_private));
     std::unique_ptr<voxblox::SSCServer> ssc_server;
     voxblox::SSCMap::Config config;
-    config.ssc_voxel_size = 0.02; //from the SSC Network which uses 0.02 m as voxel size
+    config.ssc_voxel_size = 0.02 * 4; //from the SSC Network which uses 0.02 m as voxel size
     ssc_server.reset(new voxblox::SSCServer(nh, nh_private, config));
     //ros::Subscriber sub = nh.subscribe("ssc", 1, SSCCallback);
     ros::spin();
