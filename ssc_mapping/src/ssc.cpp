@@ -43,9 +43,12 @@ class SSCMap {
     FloatingPoint block_size() const { return block_size_; }
     FloatingPoint voxel_size() const { return ssc_layer_->voxel_size(); }
 
+private:
     FloatingPoint block_size_;
     Layer<SSCOccupancyVoxel>::Ptr ssc_layer_;
 };
+
+void createPointcloudFromSSCLayer(const Layer<SSCOccupancyVoxel>& layer, pcl::PointCloud<pcl::PointXYZRGB>* pointcloud);
 
 class SSCServer {
    public:
@@ -127,8 +130,28 @@ class SSCServer {
         mergeLayerAintoLayerB(temp_layer, ssc_map_->getSSCLayerPtr());
     }
 
+    void publishSSCOccupancyPoints() {
+        // Create a pointcloud with distance = intensity.
+        pcl::PointCloud<pcl::PointXYZRGB> pointcloud;
+        createPointcloudFromSSCLayer(ssc_map_->getSSCLayer(), &pointcloud);
+
+        pointcloud.header.frame_id = "odom";
+        ssc_pointcloud_pub_.publish(pointcloud);
+    }
+
+    void publishSSCOccupiedNodes() {
+        // Create a pointcloud with distance = intensity.
+        visualization_msgs::MarkerArray marker_array;
+        //   createOccupancyBlocksFromTsdfLayer(tsdf_map_->getTsdfLayer(), world_frame_,
+        //                                      &marker_array);
+        occupancy_marker_pub_.publish(marker_array);
+    }
+
+private:
     std::shared_ptr<SSCMap> ssc_map_;
     ros::Subscriber ssc_map_sub_;
+    ros::Publisher ssc_pointcloud_pub_;
+    ros::Publisher occupancy_marker_pub_;
     ros::NodeHandle nh_;
     ros::NodeHandle nh_private_;
     tf::TransformListener tf_listener_;
@@ -168,7 +191,7 @@ inline SSCOccupancyVoxel Interpolator<SSCOccupancyVoxel>::interpVoxel(const Inte
     // if at least of half of voxels are observed,
     // assign the maximum class among the voxels
     if (count_observed > q_vector.size() / 2) {
-        auto max = std::max_element(preds.begin(), preds.end());  
+        auto max = std::max_element(preds.begin(), preds.end());
         auto idx = std::distance(preds.begin(), max);
         voxel.label = idx;
         voxel.class_confidence = 1.0f;
@@ -190,11 +213,11 @@ void mergeVoxelAIntoVoxelB(const SSCOccupancyVoxel& voxel_A, SSCOccupancyVoxel* 
 }
 
 namespace utils {
-    template <>
-    bool isObservedVoxel(const SSCOccupancyVoxel& voxel) {
+template <>
+bool isObservedVoxel(const SSCOccupancyVoxel& voxel) {
     return voxel.observed;
 }
-}
+}  // namespace utils
 
 class SSCColorMap : public IdColorMap {
    public:
@@ -219,6 +242,22 @@ class SSCColorMap : public IdColorMap {
    protected:
     std::vector<Color> colors_;
 };
+
+bool visualizeSSCOccupancyVoxels(const SSCOccupancyVoxel& voxel, const Point& /*coord*/, Color* color) {
+    CHECK_NOTNULL(color);
+    static SSCColorMap map;
+    if (voxel.observed) {
+        *color = map.colorLookup(voxel.label);
+        return true;
+    }
+    return false;
+}
+
+void createPointcloudFromSSCLayer(const Layer<SSCOccupancyVoxel>& layer,
+                                  pcl::PointCloud<pcl::PointXYZRGB>* pointcloud) {
+    CHECK_NOTNULL(pointcloud);
+    createColorPointcloudFromLayer<SSCOccupancyVoxel>(layer, &visualizeSSCOccupancyVoxels, pointcloud);
+}
 
 }  // namespace voxblox
 
