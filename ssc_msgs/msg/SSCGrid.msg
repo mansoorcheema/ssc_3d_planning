@@ -6,9 +6,10 @@ float32 origin_z
 # reference frame of the grid
 string frame
 
+# dimensions of grid
 uint32 width
 uint32 height
 uint32 depth
 
-# Voxel data packed in 4-byte chunks to better mirror protobuf serialization.
+# Voxel data
 float32[] data
