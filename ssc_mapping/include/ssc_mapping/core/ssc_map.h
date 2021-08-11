@@ -6,7 +6,7 @@
 #include <voxblox/core/layer.h>
 #include <voxblox/core/voxel.h>
 
-#include "voxel.h"
+#include "ssc_mapping/core/voxel.h"
 
 namespace voxblox {
 

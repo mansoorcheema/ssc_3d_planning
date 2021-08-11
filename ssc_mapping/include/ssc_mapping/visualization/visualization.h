@@ -1,31 +1,33 @@
 #ifndef SSC_VISUALIZATION_H_
 #define SSC_VISUALIZATION_H_
 
+#include <visualization_msgs/MarkerArray.h>
+
 #include <voxblox/core/common.h>
 #include <voxblox/core/layer.h>
 #include <voxblox/core/voxel.h>
 #include <voxblox/utils/color_maps.h>
 
-#include "voxel.h"
-#include "color_map.h"
+#include <voxblox_ros/mesh_vis.h>
+#include <voxblox_ros/ptcloud_vis.h>
+
+#include "ssc_mapping/visualization/color_map.h"
+#include "ssc_mapping/core/voxel.h"
 
 namespace voxblox {
 
-bool visualizeSSCOccupancyVoxels(const SSCOccupancyVoxel& voxel, const Point& /*coord*/, Color* color) {
-    CHECK_NOTNULL(color);
-    static SSCColorMap map;
-    if (voxel.observed && voxel.label > 0.f) {
-        *color = map.colorLookup(voxel.label);
-        return true;
-    }
-    return false;
-}
+bool visualizeSSCOccupancyVoxels(const SSCOccupancyVoxel& voxel, const Point& /*coord*/, Color* color);
 
 void createPointcloudFromSSCLayer(const Layer<SSCOccupancyVoxel>& layer,
-                                  pcl::PointCloud<pcl::PointXYZRGB>* pointcloud) {
-    CHECK_NOTNULL(pointcloud);
-    createColorPointcloudFromLayer<SSCOccupancyVoxel>(layer, &visualizeSSCOccupancyVoxels, pointcloud);
-}
+                                  pcl::PointCloud<pcl::PointXYZRGB>* pointcloud);
+
+template <typename VoxelType>
+void createOccupancyBlocksFromLayer(const Layer<VoxelType>& layer,
+                                    const ShouldVisualizeVoxelColorFunctionType<VoxelType>& vis_function,
+                                    const std::string& frame_id, visualization_msgs::MarkerArray* marker_array);
+
+void createOccupancyBlocksFromSSCLayer(const Layer<SSCOccupancyVoxel>& layer, const std::string& frame_id,
+                                       visualization_msgs::MarkerArray* marker_array);
 
 template <typename VoxelType>
 void createOccupancyBlocksFromLayer(const Layer<VoxelType>& layer,
@@ -67,13 +69,7 @@ void createOccupancyBlocksFromLayer(const Layer<VoxelType>& layer,
         }
     }
     marker_array->markers.push_back(block_marker);
-}
-
-void createOccupancyBlocksFromSSCLayer(const Layer<SSCOccupancyVoxel>& layer, const std::string& frame_id,
-                                       visualization_msgs::MarkerArray* marker_array) {
-    CHECK_NOTNULL(marker_array);
-    createOccupancyBlocksFromLayer<SSCOccupancyVoxel>(layer, &visualizeSSCOccupancyVoxels, frame_id, marker_array);
-}
+}                                       
 }  // namespace voxblox
 
 #endif  // SSC_VISUALIZATION_H_

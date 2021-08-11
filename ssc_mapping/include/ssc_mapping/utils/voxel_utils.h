@@ -6,7 +6,8 @@
 #include <voxblox/utils/voxel_utils.h>
 #include <voxblox/interpolator/interpolator.h>
 
-#include "voxel.h"
+#include "ssc_mapping/core/voxel.h"
+
 namespace voxblox {
 
 // part1 - used during upsampling. just pick largest class
