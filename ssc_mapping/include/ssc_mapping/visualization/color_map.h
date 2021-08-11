@@ -31,4 +31,4 @@ class SSCColorMap : public IdColorMap {
 };
 
 }  // namespace voxblox
-#endif SSC_COLOR_MAP_H_
+#endif //SSC_COLOR_MAP_H_
