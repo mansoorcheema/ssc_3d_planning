@@ -6,53 +6,17 @@
 #include <voxblox/core/layer.h>
 #include <voxblox/core/voxel.h>
 #include <voxblox/integrator/merge_integration.h>
-#include <voxblox/utils/color_maps.h>
-
-#include "std_msgs/Float32MultiArray.h"
-#include <tf/transform_listener.h>
 
 #include <ssc_msgs/SSCGrid.h>
 
 #include <glog/logging.h>
 
+#include "voxel.h"
+#include "ssc_map.h"
+#include "visualization.h"
+#include "voxel_utils.h"
+
 namespace voxblox {
-
-struct SSCOccupancyVoxel {
-    float probability_log = 0.0f;
-    bool observed = false;
-    int label = -1;
-    float class_confidence = 0.0f;
-};
-
-class SSCMap {
-   public:
-    struct Config {
-        FloatingPoint ssc_voxel_size = 0.2;
-        size_t ssc_voxels_per_side = 16u;
-
-        std::string print() const;
-    };
-
-    explicit SSCMap(const Config& config)
-        : ssc_layer_(new Layer<SSCOccupancyVoxel>(config.ssc_voxel_size, config.ssc_voxels_per_side)) {
-        block_size_ = config.ssc_voxel_size * config.ssc_voxels_per_side;
-    }
-
-    Layer<SSCOccupancyVoxel>* getSSCLayerPtr() { return ssc_layer_.get(); }
-    const Layer<SSCOccupancyVoxel>* getSSCLayerConstPtr() const { return ssc_layer_.get(); }
-    const Layer<SSCOccupancyVoxel>& getSSCLayer() const { return *ssc_layer_; }
-
-    FloatingPoint block_size() const { return block_size_; }
-    FloatingPoint voxel_size() const { return ssc_layer_->voxel_size(); }
-
-private:
-    FloatingPoint block_size_;
-    Layer<SSCOccupancyVoxel>::Ptr ssc_layer_;
-};
-
-void createPointcloudFromSSCLayer(const Layer<SSCOccupancyVoxel>& layer, pcl::PointCloud<pcl::PointXYZRGB>* pointcloud);
-void createOccupancyBlocksFromSSCLayer(const Layer<SSCOccupancyVoxel>& layer, const std::string& frame_id,
-                                       visualization_msgs::MarkerArray* marker_array);
 
 class SSCServer {
    public:
@@ -189,144 +153,6 @@ std::string SSCMap::Config::print() const {
   ss << "==============================================================\n";
     // clang-format on
     return ss.str();
-}
-
-// part1 - used during upsampling. just pick largest class
-// labels among voxels. Use default class prediction.
-// like scfusion uses 0.51 for new predictions irespective
-// of probs predicted by the network.
-template <>
-inline SSCOccupancyVoxel Interpolator<SSCOccupancyVoxel>::interpVoxel(const InterpVector& q_vector,
-                                                                      const SSCOccupancyVoxel** voxels) {
-    const int MAX_CLASSES = 12;
-    SSCOccupancyVoxel voxel;
-
-    uint32_t count_observed = 0;
-    std::vector<uint16_t> preds(MAX_CLASSES, 0);
-    for (int i = 0; i < q_vector.size(); ++i) {
-        if (voxels[i]->observed) {
-            count_observed++;
-            preds[voxels[i]->label]++;
-        }
-    }
-
-    // if at least of half of voxels are observed,
-    // assign the maximum class among the voxels
-    if (count_observed > q_vector.size() / 2) {
-        auto max = std::max_element(preds.begin(), preds.end());
-        auto idx = std::distance(preds.begin(), max);
-        voxel.label = idx;
-        voxel.class_confidence = 1.0f;
-        voxel.observed = true;
-    }
-
-    return voxel;
-}
-
-// part 2 merging upsampled temp layer into voxel of map layer.
-// Note; updated to use log probs and label fusion like in
-// scfusion
-template <>
-void mergeVoxelAIntoVoxelB(const SSCOccupancyVoxel& voxel_A, SSCOccupancyVoxel* voxel_B) {
-    voxel_B->label = voxel_A.label;
-    voxel_B->class_confidence = voxel_A.class_confidence;
-    voxel_B->observed = voxel_A.observed;
-    voxel_B->probability_log = voxel_A.probability_log;
-}
-
-namespace utils {
-template <>
-bool isObservedVoxel(const SSCOccupancyVoxel& voxel) {
-    return voxel.observed;
-}
-}  // namespace utils
-
-class SSCColorMap : public IdColorMap {
-   public:
-    SSCColorMap() : IdColorMap() {
-        colors_.push_back(Color(22, 191, 206));   // 0 empty, free space
-        colors_.push_back(Color(214, 38, 40));    // 1 ceiling
-        colors_.push_back(Color(43, 160, 4));     // 2 floor
-        colors_.push_back(Color(158, 216, 229));  // 3 wall
-        colors_.push_back(Color(114, 158, 206));  // 4 window
-        colors_.push_back(Color(204, 204, 91));   // 5 chair  new: 180, 220, 90
-        colors_.push_back(Color(255, 186, 119));  // 6 bed
-        colors_.push_back(Color(147, 102, 188));  // 7 sofa
-        colors_.push_back(Color(30, 119, 181));   // 8 table
-        colors_.push_back(Color(188, 188, 33));   // 9 tvs
-        colors_.push_back(Color(255, 127, 12));   // 10 furn
-        colors_.push_back(Color(196, 175, 214));  // 11 objects
-        colors_.push_back(Color(153, 153, 153));  // 12 Accessible area, or label==255, ignore
-    }
-
-    virtual Color colorLookup(const size_t value) const { return colors_[value]; }
-
-   protected:
-    std::vector<Color> colors_;
-};
-
-bool visualizeSSCOccupancyVoxels(const SSCOccupancyVoxel& voxel, const Point& /*coord*/, Color* color) {
-    CHECK_NOTNULL(color);
-    static SSCColorMap map;
-    if (voxel.observed && voxel.label > 0.f) {
-        *color = map.colorLookup(voxel.label);
-        return true;
-    }
-    return false;
-}
-
-void createPointcloudFromSSCLayer(const Layer<SSCOccupancyVoxel>& layer,
-                                  pcl::PointCloud<pcl::PointXYZRGB>* pointcloud) {
-    CHECK_NOTNULL(pointcloud);
-    createColorPointcloudFromLayer<SSCOccupancyVoxel>(layer, &visualizeSSCOccupancyVoxels, pointcloud);
-}
-
-template <typename VoxelType>
-void createOccupancyBlocksFromLayer(const Layer<VoxelType>& layer,
-                                    const ShouldVisualizeVoxelColorFunctionType<VoxelType>& vis_function,
-                                    const std::string& frame_id, visualization_msgs::MarkerArray* marker_array) {
-    CHECK_NOTNULL(marker_array);
-    // Cache layer settings.
-    size_t vps = layer.voxels_per_side();
-    size_t num_voxels_per_block = vps * vps * vps;
-    FloatingPoint voxel_size = layer.voxel_size();
-
-    visualization_msgs::Marker block_marker;
-    block_marker.header.frame_id = frame_id;
-    block_marker.ns = "occupied_voxels";
-    block_marker.id = 0;
-    block_marker.type = visualization_msgs::Marker::CUBE_LIST;
-    block_marker.scale.x = block_marker.scale.y = block_marker.scale.z = voxel_size;
-    block_marker.action = visualization_msgs::Marker::ADD;
-
-    BlockIndexList blocks;
-    layer.getAllAllocatedBlocks(&blocks);
-    for (const BlockIndex& index : blocks) {
-        // Iterate over all voxels in said blocks.
-        const Block<VoxelType>& block = layer.getBlockByIndex(index);
-
-        for (size_t linear_index = 0; linear_index < num_voxels_per_block; ++linear_index) {
-            Point coord = block.computeCoordinatesFromLinearIndex(linear_index);
-            Color color;
-            if (vis_function(block.getVoxelByLinearIndex(linear_index), coord, &color)) {
-                geometry_msgs::Point cube_center;
-                cube_center.x = coord.x();
-                cube_center.y = coord.y();
-                cube_center.z = coord.z();
-                block_marker.points.push_back(cube_center);
-                std_msgs::ColorRGBA color_msg;
-                colorVoxbloxToMsg(color, &color_msg);
-                block_marker.colors.push_back(color_msg);
-            }
-        }
-    }
-    marker_array->markers.push_back(block_marker);
-}
-
-void createOccupancyBlocksFromSSCLayer(const Layer<SSCOccupancyVoxel>& layer, const std::string& frame_id,
-                                       visualization_msgs::MarkerArray* marker_array) {
-    CHECK_NOTNULL(marker_array);
-    createOccupancyBlocksFromLayer<SSCOccupancyVoxel>(layer, &visualizeSSCOccupancyVoxels, frame_id, marker_array);
 }
 
 }  // namespace voxblox
