@@ -18,7 +18,8 @@ catkin_package()
         
 cs_add_executable(${PROJECT_NAME}_node
         src/visualization/visualization.cpp
-        src/ssc.cpp
+        src/ros/ssc_server.cpp
+        src/ssc_server_node.cpp
 )
 target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} )
 
