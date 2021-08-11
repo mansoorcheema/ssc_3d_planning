@@ -15,10 +15,12 @@ catkin_package()
 #         src/ssc.cpp
 #         )
 
+        
 cs_add_executable(${PROJECT_NAME}_node
+        src/visualization/visualization.cpp
         src/ssc.cpp
 )
-target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} )
 
 cs_install()
 cs_export()

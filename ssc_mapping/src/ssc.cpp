@@ -11,10 +11,10 @@
 
 #include <glog/logging.h>
 
-#include "voxel.h"
-#include "ssc_map.h"
-#include "visualization.h"
-#include "voxel_utils.h"
+#include "ssc_mapping/core/voxel.h"
+#include "ssc_mapping/core/ssc_map.h"
+#include "ssc_mapping/visualization/visualization.h"
+#include "ssc_mapping/utils/voxel_utils.h"
 
 namespace voxblox {
 
