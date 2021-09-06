@@ -100,10 +100,10 @@ void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
                 // }
 
 
-                float pred_conf = 0.7f;
+                float pred_conf = 0.75f;
                 float max_weight = 50;
-                float prob_occupied = 0.65f;
-                float prob_free = 0.4f;
+                float prob_occupied = 0.675f;
+                float prob_free = 0.45f;
                 
                 voxel->observed = true;
                 if (predicted_label > 0) {
