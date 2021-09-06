@@ -34,7 +34,7 @@ inline SSCOccupancyVoxel Interpolator<SSCOccupancyVoxel>::interpVoxel(const Inte
         auto max = std::max_element(preds.begin(), preds.end());
         auto idx = std::distance(preds.begin(), max);
         voxel.label = idx;
-        voxel.class_confidence = 1.0f;
+        voxel.label_weight = 1.0f;
         voxel.observed = true;
     }
 
@@ -49,7 +49,7 @@ inline SSCOccupancyVoxel Interpolator<SSCOccupancyVoxel>::interpVoxel(const Inte
 template <>
 void mergeVoxelAIntoVoxelB(const SSCOccupancyVoxel& voxel_A, SSCOccupancyVoxel* voxel_B) {
     voxel_B->label = voxel_A.label;
-    voxel_B->class_confidence = voxel_A.class_confidence;
+    voxel_B->label_weight = voxel_A.label_weight;
     voxel_B->observed = voxel_A.observed;
     voxel_B->probability_log = voxel_A.probability_log;
 }

@@ -19,10 +19,14 @@ SSCServer::SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_privat
 }
 
 void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
-    std::cout << "frame:" << msg->frame << std::endl;
-    std::cout << "origin_x:" << msg->origin_x << std::endl;
-    std::cout << "origin_y:" << msg->origin_y << std::endl;
-    std::cout << "origin_z:" << msg->origin_z << std::endl;
+    // std::cout << "frame:" << msg->frame << std::endl;
+    // std::cout << "origin_x:" << msg->origin_x << std::endl;
+    // std::cout << "origin_y:" << msg->origin_y << std::endl;
+    // std::cout << "origin_z:" << msg->origin_z << std::endl;
+
+    if(msg->origin_z < -1.5f) {
+        std::cout << "origin_z:" << msg->origin_z << std::endl;
+    }
 
     // todo - resize voxels to full size? Resize voxel grid from 64x36x64 to 240x144x240
     // todo - update the  ssc_msgs::SSCGrid to contain the scale instead of hard coding
@@ -35,8 +39,8 @@ void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
     // Note: numpy flattens an array (x,y,z) such that
     // X
     //  \
-        //   \
-        //    + ------------------> Z
+    //   \
+    //    + ------------------> Z
     //    |
     //    |
     //    v
@@ -60,7 +64,7 @@ void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
         for (size_t y = 0; y < msg->height; y++) {
             for (size_t z = 0; z < msg->width; z++) {
                 size_t idx = x * msg->width * msg->height + y * msg->width + z;
-                uint cls = msg->data[idx];
+                uint predicted_label = msg->data[idx];
 
                 // transform from grid coordinate system to world coordinate system
                 uint32_t world_orient_x = z;  // still uses scale of grid though rotation is in world coords
@@ -89,11 +93,42 @@ void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
                 }
 
                 // Fuse new measurements only if voxel is not obsrverd or is observed but empty
-                if (!voxel->observed || (voxel->observed && voxel->label == 0)) {
-                    voxel->label = cls;
-                    voxel->class_confidence = 1.0;  // todo - use confidence weight fusion like in SCFusion Paper
-                    voxel->observed = true;
+                // if (!voxel->observed || (voxel->observed && voxel->label == 0)) {
+                //     voxel->label = predicted_label;
+                //     voxel->label_weight = 1.0;  // todo - use confidence weight fusion like in SCFusion Paper
+                //     voxel->observed = true;
+                // }
+
+
+                float pred_conf = 0.7f;
+                float max_weight = 50;
+                float prob_occupied = 0.65f;
+                float prob_free = 0.4f;
+                
+                voxel->observed = true;
+                if (predicted_label > 0) {
+                    if (predicted_label == voxel->label) {
+                        voxel->label_weight = std::min(voxel->label_weight + pred_conf, max_weight);
+                    } else if (voxel->label_weight < pred_conf) {
+                        voxel->label_weight = pred_conf - voxel->label_weight;
+                        voxel->label = predicted_label;
+                    } else {
+                        voxel->label_weight = voxel->label_weight - pred_conf;
+                    }
                 }
+
+                // if voxel is predicted as occupied
+                float log_odds_update = 0;
+                if (predicted_label > 0) {
+                    //occupied voxel
+                    log_odds_update = logOddsFromProbability(prob_occupied);
+                } else {
+                    //free voxel
+                    log_odds_update = logOddsFromProbability(prob_free);
+                }
+                
+                voxel->probability_log = std::min( std::max(voxel->probability_log + log_odds_update, logOddsFromProbability(0.12f)), logOddsFromProbability(0.97f));
+                
             }
         }
     }
