@@ -30,8 +30,8 @@ class SSCMap {
 
     FloatingPoint block_size() const { return block_size_; }
     FloatingPoint voxel_size() const { return ssc_layer_->voxel_size(); }
-
-private:
+    
+    bool isObserved(const Eigen::Vector3d& position) const;
     FloatingPoint block_size_;
     Layer<SSCOccupancyVoxel>::Ptr ssc_layer_;
 };

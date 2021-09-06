@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(ssc_mapping)
+project(ssc_planning)
 
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
@@ -12,16 +12,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 catkin_package()
 
 cs_add_library(${PROJECT_NAME}
-        src/visualization/visualization.cpp
-        src/core/ssc_map.cpp
-        src/ros/ssc_server.cpp
-        )
+        src/initialization/ssc_package.cpp
+        src/map/ssc_occ_map.cpp
+)
 
         
-cs_add_executable(${PROJECT_NAME}_node
-        src/ssc_server_node.cpp
-)
-target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME} ${catkin_LIBRARIES} )
+# cs_add_executable(${PROJECT_NAME}_node
+#         src/map/ssc_occ_map.cpp
+# )
+#target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} ssc_mapping )
 
 cs_install()
 cs_export()

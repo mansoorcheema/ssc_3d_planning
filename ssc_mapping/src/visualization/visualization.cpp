@@ -7,7 +7,7 @@ namespace voxblox {
 bool visualizeSSCOccupancyVoxels(const SSCOccupancyVoxel& voxel, const Point& /*coord*/, Color* color) {
     CHECK_NOTNULL(color);
     static SSCColorMap map;
-    if (voxel.observed &&  voxel.probability_log > 0.3679f) { //log(0.7/0.3) = 0.3679f
+    if (voxel.observed &&  voxel.probability_log > logOddsFromProbability(0.5f)) { //log(0.7/0.3) = 0.3679f
         *color = map.colorLookup(voxel.label);
         return true;
     }
