@@ -26,6 +26,9 @@ class SSCServer {
 
     virtual void clear() { ssc_map_->getSSCLayerPtr()->removeAllBlocks(); }
 
+    inline std::shared_ptr<SSCMap> getSSCMapPtr() { return ssc_map_; }
+    inline std::shared_ptr<const SSCMap> getSSCMapPtr() const { return ssc_map_; }
+
     void publishSSCOccupancyPoints();
 
     void publishSSCOccupiedNodes();

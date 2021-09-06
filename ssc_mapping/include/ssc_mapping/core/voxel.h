@@ -8,7 +8,7 @@ struct SSCOccupancyVoxel {
     float probability_log = 0.0f;
     bool observed = false;
     int label = -1;
-    float class_confidence = 0.0f;
+    float label_weight = 0.0f;
 };
 }  // namespace voxblox
 #endif //SSC_VOXEL_H_
