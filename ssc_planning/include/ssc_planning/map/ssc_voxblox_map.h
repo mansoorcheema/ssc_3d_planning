@@ -1,20 +1,20 @@
-#ifndef SSC_3D_PLANNING_VOXBLOX_MAP_VOXBLOX_H_
-#define SSC_3D_PLANNING_VOXBLOX_MAP_VOXBLOX_H_
+#ifndef SSC_VOXBLOX_3D_PLANNING_MAP_H_
+#define SSC_VOXBLOX_3D_PLANNING_MAP_H_
 
 #include <memory>
 
 #include <active_3d_planning_core/module/module_factory_registry.h>
+#include <ssc_mapping/ros/ssc_server.h>
 #include <voxblox_ros/esdf_server.h>
-
-#include "active_3d_planning_core/map/tsdf_map.h"
+#include <active_3d_planning_core/map/occupancy_map.h>
 
 namespace active_3d_planning {
 namespace map {
 
 // Voxblox as a map representation
-class VoxbloxMap : public TSDFMap {
+class SSCVoxbloxOccupancyMap : public OccupancyMap {
  public:
-  explicit VoxbloxMap(PlannerI& planner);  // NOLINT
+  explicit SSCVoxbloxOccupancyMap(PlannerI& planner);  // NOLINT
 
   // implement virtual methods
   void setupFromParamMap(Module::ParamMap* param_map) override;
@@ -36,31 +36,25 @@ class VoxbloxMap : public TSDFMap {
   bool getVoxelCenter(Eigen::Vector3d* center,
                       const Eigen::Vector3d& point) override;
 
-  // get the stored distance
-  double getVoxelDistance(const Eigen::Vector3d& point) override;
-
-  // get the stored weight
-  double getVoxelWeight(const Eigen::Vector3d& point) override;
-
-  // get the maximum allowed weight (return 0 if using uncapped weights)
-  double getMaximumWeight() override;
-
   // accessor to the server for specialized planners
+  voxblox::SSCServer& getSSCServer();
+
   voxblox::EsdfServer& getESDFServer();
 
  protected:
-  static ModuleFactoryRegistry::Registration<VoxbloxMap> registration;
+  static ModuleFactoryRegistry::Registration<SSCVoxbloxOccupancyMap> registration;
 
   // esdf server that contains the map, subscribe to external ESDF/TSDF updates
+  std::unique_ptr<voxblox::SSCServer> ssc_server_;
+
   std::unique_ptr<voxblox::EsdfServer> esdf_server_;
 
   // cache constants
   double c_voxel_size_;
   double c_block_size_;
-  double c_maximum_weight_;
 };
 
 }  // namespace map
 }  // namespace active_3d_planning
 
-#endif  // SSC_3D_PLANNING_VOXBLOX_MAP_VOXBLOX_H_
+#endif  // SSC_VOXBLOX_3D_PLANNING_MAP_H_

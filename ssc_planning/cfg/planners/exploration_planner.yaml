@@ -14,7 +14,7 @@ visualize_gain: true
 highlight_executed_trajectory: true
 
 map:
-  type: "SSCOccupancyMap"
+  type: "SSCVoxbloxOccupancyMap"
   voxel_size: 0.08
   fusion_strategy: 1
   pred_conf: 0.75
