@@ -15,6 +15,7 @@ cs_add_library(${PROJECT_NAME}
         src/visualization/visualization.cpp
         src/core/ssc_map.cpp
         src/ros/ssc_server.cpp
+        src/fusion/occupancy_fusion.cpp
         )
 
         

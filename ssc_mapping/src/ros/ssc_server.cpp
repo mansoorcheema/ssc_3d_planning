@@ -4,28 +4,55 @@
 #include <voxblox/core/voxel.h>
 
 #include "ssc_mapping/core/voxel.h"
+#include "ssc_mapping/fusion/naive_fusion.h"
+#include "ssc_mapping/fusion/occupancy_fusion.h"
 #include "ssc_mapping/utils/voxel_utils.h"
 #include "ssc_mapping/visualization/visualization.h"
 
 namespace voxblox {
 
-SSCServer::SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private, const SSCMap::Config& config)
-    : nh_(nh), nh_private_(nh_private), publish_pointclouds_on_update_(true), world_frame_("odom") {
+SSCServer::SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private, const ssc_fusion::BaseFusion::Config& fusion_config,  const SSCMap::Config& config)
+    : nh_(nh), nh_private_(nh_private), publish_pointclouds_on_update_(true), ssc_topic_("ssc"), world_frame_("odom") {
     ssc_map_.reset(new SSCMap(config));
-    ssc_map_sub_ = nh_.subscribe("ssc", 1, &SSCServer::sscCallback, this);
+
+    if (fusion_config.fusion_strategy == ssc_fusion::strategy::log_odds) {
+        base_fusion_.reset(new ssc_fusion::OccupancyFusion(fusion_config));
+    } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::naive) {
+        base_fusion_.reset(new ssc_fusion::NaiveFusion());
+    } else {
+        LOG(WARNING) << "Wrong Fusion strategy provided. Using default fusion strategy";
+        base_fusion_.reset(new ssc_fusion::OccupancyFusion(fusion_config));
+    }
+
+    // subscribe to SSC from node with 3D CNN 
+    nh.param("ssc_topic", ssc_topic_, ssc_topic_);
+    ssc_map_sub_ = nh_.subscribe(ssc_topic_, 1, &SSCServer::sscCallback, this);
+
+    //publish fused maps as occupancy pointcloud
     ssc_pointcloud_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZRGB> >("occupancy_pointcloud", 1, true);
 
+    //publish fused maps as occupancy nodes - marker array
     occupancy_marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("ssc_occupied_nodes", 1, true);
 }
 
-void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
-    // std::cout << "frame:" << msg->frame << std::endl;
-    // std::cout << "origin_x:" << msg->origin_x << std::endl;
-    // std::cout << "origin_y:" << msg->origin_y << std::endl;
-    // std::cout << "origin_z:" << msg->origin_z << std::endl;
+ssc_fusion::BaseFusion::Config SSCServer::loadFusionConfigROS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private) {
+    ssc_fusion::BaseFusion::Config fusion_config;
 
-    if(msg->origin_z < -1.5f) {
-        std::cout << "origin_z:" << msg->origin_z << std::endl;
+    nh.param("fusion_pred_conf", fusion_config.pred_conf,  fusion_config.pred_conf);
+    nh.param("fusion_max_weight", fusion_config.max_weight, fusion_config.max_weight);
+    nh.param("fusion_prob_occupied", fusion_config.prob_occupied, fusion_config.prob_occupied);
+    nh.param("fusion_prob_free", fusion_config.prob_free, fusion_config.prob_free);
+    nh.param("fusion_min_prob", fusion_config.min_prob, fusion_config.min_prob);
+    nh.param("fusion_max_prob", fusion_config.max_prob, fusion_config.max_prob);
+    nh.param("fusion_strategy", fusion_config.fusion_strategy, fusion_config.fusion_strategy);
+
+    return fusion_config;
+}
+
+void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
+    if (msg->origin_z < -1.5f) {  // a check to print if there is a wrong pose/outlier received
+        LOG(WARNING) << "Outlier pose detected with origin at " << msg->origin_z << ". Skipping..";
+        return;
     }
 
     // todo - resize voxels to full size? Resize voxel grid from 64x36x64 to 240x144x240
@@ -34,6 +61,7 @@ void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
     // Layer<SSCOccupancyVoxel> temp_layer(ssc_map_->getSSCLayerPtr()->voxel_size() * 4,
     //                                    (ssc_map_->getSSCLayerPtr()->block_size()/ssc_map_->getSSCLayerPtr()->voxel_size())
     //                                    / 4);
+    // Note: Not needed anymore
 
     // completions are in odometry frame
     // Note: numpy flattens an array (x,y,z) such that
@@ -92,43 +120,7 @@ void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
                     voxel = &block->getVoxelByVoxelIndex(local_voxel_idx);
                 }
 
-                // Fuse new measurements only if voxel is not obsrverd or is observed but empty
-                // if (!voxel->observed || (voxel->observed && voxel->label == 0)) {
-                //     voxel->label = predicted_label;
-                //     voxel->label_weight = 1.0;  // todo - use confidence weight fusion like in SCFusion Paper
-                //     voxel->observed = true;
-                // }
-
-
-                float pred_conf = 0.75f;
-                float max_weight = 50;
-                float prob_occupied = 0.675f;
-                float prob_free = 0.45f;
-                
-                voxel->observed = true;
-                if (predicted_label > 0) {
-                    if (predicted_label == voxel->label) {
-                        voxel->label_weight = std::min(voxel->label_weight + pred_conf, max_weight);
-                    } else if (voxel->label_weight < pred_conf) {
-                        voxel->label_weight = pred_conf - voxel->label_weight;
-                        voxel->label = predicted_label;
-                    } else {
-                        voxel->label_weight = voxel->label_weight - pred_conf;
-                    }
-                }
-
-                // if voxel is predicted as occupied
-                float log_odds_update = 0;
-                if (predicted_label > 0) {
-                    //occupied voxel
-                    log_odds_update = logOddsFromProbability(prob_occupied);
-                } else {
-                    //free voxel
-                    log_odds_update = logOddsFromProbability(prob_free);
-                }
-                
-                voxel->probability_log = std::min( std::max(voxel->probability_log + log_odds_update, logOddsFromProbability(0.12f)), logOddsFromProbability(0.97f));
-                
+                base_fusion_->fuse(voxel, predicted_label);
             }
         }
     }

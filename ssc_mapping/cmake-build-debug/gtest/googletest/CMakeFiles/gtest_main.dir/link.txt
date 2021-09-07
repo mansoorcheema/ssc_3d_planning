@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -g  -shared -Wl,-soname,libgtest_maind.so -o ../../lib/libgtest_maind.so CMakeFiles/gtest_main.dir/src/gtest_main.cc.o  -Wl,-rpath,/Data/simulations/catkin_ws/src/ssc_3d_planning/ssc_mapping/cmake-build-debug/lib ../../lib/libgtestd.so -lpthread 

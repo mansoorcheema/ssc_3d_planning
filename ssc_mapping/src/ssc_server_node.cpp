@@ -14,9 +14,10 @@ int main(int argc, char **argv) {
     
     //tsdf_server.reset(new voxblox::TsdfServer(nh, nh_private));
     std::unique_ptr<voxblox::SSCServer> ssc_server;
-    voxblox::SSCMap::Config config;
-    config.ssc_voxel_size = 0.02 * 4; //from the SSC Network which uses 0.02 m as voxel size
-    ssc_server.reset(new voxblox::SSCServer(nh, nh_private, config));
+    voxblox::SSCMap::Config map_config;
+    map_config.ssc_voxel_size = 0.02 * 4; //from the SSC Network which uses 0.02 m as voxel size
+
+    ssc_server.reset(new voxblox::SSCServer(nh, nh_private, ssc_fusion::BaseFusion::Config(), map_config));
     //ros::Subscriber sub = nh.subscribe("ssc", 1, SSCCallback);
     ros::spin();
     return 0;
