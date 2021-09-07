@@ -11,10 +11,12 @@
 namespace active_3d_planning {
 namespace map {
 
-// Voxblox as a map representation
+/**
+ * SSCMap as a map representation for planning.
+ */ 
 class SSCOccupancyMap : public OccupancyMap {
  public:
-  explicit SSCOccupancyMap(PlannerI& planner);  // NOLINT
+  explicit SSCOccupancyMap(PlannerI& planner);
 
   // implement virtual methods
   void setupFromParamMap(Module::ParamMap* param_map) override;

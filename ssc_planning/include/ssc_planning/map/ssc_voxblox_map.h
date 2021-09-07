@@ -11,10 +11,13 @@
 namespace active_3d_planning {
 namespace map {
 
-// Voxblox as a map representation
+/**
+ * SSC + Voxblox as a map representation. First use esdf map,
+ * in case the voxel is not observed, falls back to SSC Map.
+ */ 
 class SSCVoxbloxOccupancyMap : public OccupancyMap {
  public:
-  explicit SSCVoxbloxOccupancyMap(PlannerI& planner);  // NOLINT
+  explicit SSCVoxbloxOccupancyMap(PlannerI& planner);
 
   // implement virtual methods
   void setupFromParamMap(Module::ParamMap* param_map) override;
@@ -36,7 +39,7 @@ class SSCVoxbloxOccupancyMap : public OccupancyMap {
   bool getVoxelCenter(Eigen::Vector3d* center,
                       const Eigen::Vector3d& point) override;
 
-  // accessor to the server for specialized planners
+  // accessor to the servers for specialized planners
   voxblox::SSCServer& getSSCServer();
 
   voxblox::EsdfServer& getESDFServer();
