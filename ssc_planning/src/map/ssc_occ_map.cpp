@@ -19,9 +19,21 @@ void SSCOccupancyMap::setupFromParamMap(Module::ParamMap* param_map) {
   ros::NodeHandle nh("");
   ros::NodeHandle nh_private("~");
 
-  voxblox::SSCMap::Config config;
-  config.ssc_voxel_size = 0.02 * 4;
-  ssc_server_.reset(new voxblox::SSCServer(nh, nh_private, config));
+  voxblox::SSCMap::Config map_config;
+  ssc_fusion::BaseFusion::Config fusion_config;
+
+  // load ssc map config
+  setParam<float>(param_map, "voxel_size", &map_config.ssc_voxel_size, 0.08);
+
+  // load fusion config
+  setParam<float>(param_map, "pred_conf", &fusion_config.pred_conf, fusion_config.pred_conf);
+  setParam<float>(param_map, "max_weight", &fusion_config.max_weight, fusion_config.max_weight);
+  setParam<float>(param_map, "prob_occupied", &fusion_config.prob_occupied, fusion_config.prob_occupied);
+  setParam<float>(param_map, "prob_free", &fusion_config.prob_free, fusion_config.prob_free);
+  setParam<float>(param_map, "prob_min", &fusion_config.prob_free, fusion_config.prob_free);
+  setParam<float>(param_map, "prob_max", &fusion_config.prob_free, fusion_config.prob_free);
+  setParam<int>(param_map, "fusion_strategy", &fusion_config.fusion_strategy, fusion_config.fusion_strategy);
+  ssc_server_.reset(new voxblox::SSCServer(nh, nh_private, fusion_config, map_config));
 
   // cache constants
   c_voxel_size_ = ssc_server_->getSSCMapPtr()->voxel_size();
@@ -29,12 +41,7 @@ void SSCOccupancyMap::setupFromParamMap(Module::ParamMap* param_map) {
 }
 
 bool SSCOccupancyMap::isTraversable(const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation) {
-    // double distance = 0.0;
-    // if (esdf_server_->getEsdfMapPtr()->getDistanceAtPosition(position,
-    //                                                          &distance)) {
-    //   // This means the voxel is observed
-    //   return (distance > planner_.getSystemConstraints().collision_radius);
-    // }
+
     double collision_radius = planner_.getSystemConstraints().collision_radius;
 
     Eigen::Vector3d front(position.x() + collision_radius, 0, 0);
@@ -66,7 +73,7 @@ unsigned char SSCOccupancyMap::getVoxelState(const Eigen::Vector3d& point) {
 
     if (voxel == nullptr) 
       return OccupancyMap::UNKNOWN;
-      
+
     if (voxel->observed) {
         if (voxel->probability_log > voxblox::logOddsFromProbability(0.5f)) {  // log(0.7/0.3) = 0.3679f
             return OccupancyMap::OCCUPIED;
