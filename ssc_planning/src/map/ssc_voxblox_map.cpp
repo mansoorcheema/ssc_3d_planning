@@ -80,7 +80,7 @@ bool SSCVoxbloxOccupancyMap::isTraversable(const Eigen::Vector3d& position, cons
     Eigen::Vector3d right(0, position.y() - collision_radius, 0);
 
     Eigen::Vector3d top(0, 0, position.z() + collision_radius);
-    Eigen::Vector3d bottom(0, 0, position.z() + collision_radius);
+    Eigen::Vector3d bottom(0, 0, position.z() - collision_radius);
 
     if (getVoxelState(top) == OccupancyMap::FREE && getVoxelState(bottom) == OccupancyMap::FREE &&
         getVoxelState(left) == OccupancyMap::FREE && getVoxelState(right) == OccupancyMap::FREE &&
