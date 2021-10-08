@@ -44,14 +44,14 @@ bool SSCOccupancyMap::isTraversable(const Eigen::Vector3d& position, const Eigen
 
     double collision_radius = planner_.getSystemConstraints().collision_radius;
 
-    Eigen::Vector3d front(position.x() + collision_radius, 0, 0);
-    Eigen::Vector3d back(position.x() - collision_radius, 0, 0);
+    Eigen::Vector3d front(position.x() + collision_radius, position.y() , position.z());
+    Eigen::Vector3d back(position.x() - collision_radius, position.y() , position.z());
 
-    Eigen::Vector3d left(0, position.y() + collision_radius, 0);
-    Eigen::Vector3d right(0, position.y() - collision_radius, 0);
+    Eigen::Vector3d left(position.x(), position.y() + collision_radius,  position.z());
+    Eigen::Vector3d right(position.x(), position.y() - collision_radius,  position.z());
 
-    Eigen::Vector3d top(0, 0, position.z() + collision_radius);
-    Eigen::Vector3d bottom(0, 0, position.z() - collision_radius);
+    Eigen::Vector3d top(position.x(), position.y(), position.z() + collision_radius);
+    Eigen::Vector3d bottom(position.x(), position.y(), position.z() - collision_radius);
 
     if (getVoxelState(top) == OccupancyMap::FREE && getVoxelState(bottom) == OccupancyMap::FREE &&
         getVoxelState(left) == OccupancyMap::FREE && getVoxelState(right) == OccupancyMap::FREE &&
