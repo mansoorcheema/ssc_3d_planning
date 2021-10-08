@@ -22,7 +22,12 @@ cs_add_library(${PROJECT_NAME}
 cs_add_executable(${PROJECT_NAME}_node
         src/ssc_server_node.cpp
 )
+
+cs_add_executable(ssc_map_eval_node
+        src/ssc_map_eval_node.cpp
+)
 target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME} ${catkin_LIBRARIES} )
+target_link_libraries(ssc_map_eval_node ${PROJECT_NAME} ${catkin_LIBRARIES} )
 
 cs_install()
 cs_export()
