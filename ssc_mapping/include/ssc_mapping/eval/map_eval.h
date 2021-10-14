@@ -162,7 +162,7 @@ void calculateFreeObservedVoxels(const voxblox::Layer<VoxelType>& layer, GlobalI
             // voxblox::Point coord = block.computeCoordinatesFromLinearIndex(linear_index);
             auto voxel = block.getVoxelByLinearIndex(linear_index);
 
-            if(voxel.weight > 1e-6 && voxel.distance < layer.voxel_size() && voxel.distance > -layer.voxel_size() ) {
+            if(voxel.weight > 1e-6 ) {
                 voxblox::VoxelIndex voxel_idx = block.computeVoxelIndexFromLinearIndex(linear_index);
                 voxblox::BlockIndex block_idx = index;
                 voxblox::GlobalIndex global_voxel_idx =
@@ -173,6 +173,68 @@ void calculateFreeObservedVoxels(const voxblox::Layer<VoxelType>& layer, GlobalI
     }
 }
 
+template <typename VoxelType>
+void pruneInsideVoxels(const voxblox::Layer<VoxelType>& layer, GlobalIndexVector* voxels) {
+    voxels->erase(std::remove_if(voxels->begin(), voxels->end(),
+                                 [&](auto voxel_idx) -> bool {
+                                     auto voxel = layer.getVoxelPtrByGlobalIndex(voxel_idx);
+                                     if (voxel != nullptr && voxel->weight > 1e-6 && voxel->distance < 0) return true;
+                                     return false;
+                                 }),
+                  voxels->end());
+}
+
+template <typename VoxelType>
+void pruneOutlierVoxels(const voxblox::Layer<VoxelType>& layer, GlobalIndexVector* voxels) {
+    voxblox::Point min_coords, max_coords;
+    min_coords.setZero();
+    max_coords.setZero();
+
+    size_t vps = layer.voxels_per_side();
+    size_t num_voxels_per_block = vps * vps * vps;
+
+    voxblox::BlockIndexList blocks;
+    layer.getAllAllocatedBlocks(&blocks);
+    for (const voxblox::BlockIndex& index : blocks) {
+        const voxblox::Block<voxblox::TsdfVoxel>& block = layer.getBlockByIndex(index);
+
+        for (size_t linear_index = 0; linear_index < num_voxels_per_block; ++linear_index) {
+            // voxblox::Point coord = block.computeCoordinatesFromLinearIndex(linear_index);
+            auto voxel = block.getVoxelByLinearIndex(linear_index);
+
+            if(voxel.weight > 1e-6 ) {
+            voxblox::VoxelIndex voxel_idx = block.computeVoxelIndexFromLinearIndex(linear_index);
+            voxblox::BlockIndex block_idx = index;
+            voxblox::GlobalIndex global_voxel_idx =
+                voxblox::getGlobalVoxelIndexFromBlockAndVoxelIndex(block_idx, voxel_idx, layer.voxels_per_side());
+            auto voxel_coords = getCenterPointFromGridIndex(global_voxel_idx, layer.voxel_size());
+
+            min_coords = min_coords.cwiseMin(voxel_coords);
+            max_coords = max_coords.cwiseMax(voxel_coords);
+
+            }
+        }
+
+        // auto block_origin = block.origin();
+        // min_coords = min_coords.cwiseMin(block_origin);
+        // max_coords = max_coords.cwiseMax(block_origin);
+    }
+
+    voxels->erase(std::remove_if(voxels->begin(), voxels->end(),
+                                 [&](auto voxel_idx) -> bool {
+                                     auto voxel = layer.getVoxelPtrByGlobalIndex(voxel_idx);
+                                    //  if (min_coords.cwiseMin(voxel_idx) != min_coords ||
+                                    //      max_coords.cwiseMax(voxel_idx) != max_coords)
+                                    //      return true;
+                                    auto voxel_coords = getOriginPointFromGridIndex(voxel_idx, layer.voxel_size());
+                                    //voxblox::Point new_min_coords = min_coords.cwiseMin(voxel_coords);
+                                     if (min_coords.cwiseMin(voxel_coords) != min_coords ||
+                                         max_coords.cwiseMax(voxel_coords) != max_coords)
+                                         return true;
+                                     return false;
+                                 }),
+                  voxels->end());
+}
 
 // Creates a list of obeserved and unobserved voxels (in the input layer) from a list of voxels.
 // The results are filled in out_observed_voxels and out_UnObserved_voxels.
@@ -193,6 +255,103 @@ void splitObservedAndUnObservedVoxels(const voxblox::Layer<VoxelType>& layer, co
              out_un_observed_voxels->emplace_back(voxel_idx);
         }
     }
+}
+
+//////////////////////////////////////////////////////////////////
+
+
+GlobalIndex indexFromPoint(
+    const Point& point, FloatingPoint voxel_size_inv)  {
+  return voxblox::getGridIndexFromPoint<GlobalIndex>(point, voxel_size_inv);
+}
+
+int voxelState(
+    const GlobalIndex& index, const voxblox::Layer<voxblox::TsdfVoxel>& layer) {
+  voxblox::BlockIndex block_idx;
+  voxblox::VoxelIndex voxel_idx;
+  voxblox::getBlockAndVoxelIndexFromGlobalVoxelIndex(
+      index, layer.voxels_per_side(), &block_idx, &voxel_idx);
+  const auto block = layer.getBlockPtrByIndex(block_idx);
+  if (block) {
+    const voxblox::TsdfVoxel& voxel = block->getVoxelByVoxelIndex(voxel_idx);
+    if (voxel.weight > 1e-6) {
+      if (voxel.distance > layer.voxel_size()) {
+        return 0;
+      } else {
+        return 1;
+      }
+    }
+  }
+  return 2;
+}
+
+void computeFrontierCandidates(
+    const voxblox::Layer<voxblox::TsdfVoxel>& layer, const Point& initial_point, GlobalIndexVector * voxels, GlobalIndexVector * obstacles) {
+
+  auto t_start = std::chrono::high_resolution_clock::now();
+
+  GlobalIndex kNeighborOffsets[26] = {
+      GlobalIndex(1, 0, 0),   GlobalIndex(1, 1, 0),   GlobalIndex(1, -1, 0),  GlobalIndex(1, 0, 1),
+      GlobalIndex(1, 1, 1),   GlobalIndex(1, -1, 1),  GlobalIndex(1, 0, -1),  GlobalIndex(1, 1, -1),
+      GlobalIndex(1, -1, -1), GlobalIndex(0, 1, 0),   GlobalIndex(0, -1, 0),  GlobalIndex(0, 0, 1),
+      GlobalIndex(0, 1, 1),   GlobalIndex(0, -1, 1),  GlobalIndex(0, 0, -1),  GlobalIndex(0, 1, -1),
+      GlobalIndex(0, -1, -1), GlobalIndex(-1, 0, 0),  GlobalIndex(-1, 1, 0),  GlobalIndex(-1, -1, 0),
+      GlobalIndex(-1, 0, 1),  GlobalIndex(-1, 1, 1),  GlobalIndex(-1, -1, 1), GlobalIndex(-1, 0, -1),
+      GlobalIndex(-1, 1, -1), GlobalIndex(-1, -1, -1)};
+
+  // Cache submap data.
+  FloatingPoint voxel_size = layer.voxel_size();
+  CHECK_GT(voxel_size, 0.f);
+  FloatingPoint voxel_size_inv = 1.f / voxel_size;
+
+  // Setup search.
+  voxblox::LongIndexSet closed_list;
+  std::stack<GlobalIndex> open_stack;
+  
+  open_stack.push(indexFromPoint(initial_point, voxel_size_inv));
+
+  // Search all frontiers.
+  while (!open_stack.empty()) {
+    // 'current', including the initial point, traverse observed free space.
+    auto current = open_stack.top();
+    //std::cout <<current<<std::endl;
+    open_stack.pop();
+    
+
+    // Check all neighbors for frontiers and free space.
+    for (auto offset : kNeighborOffsets) {
+      auto candidate = current + offset;
+       if (closed_list.find(candidate) != closed_list.end()) {
+        // Only consider voxels that were not yet checked.
+        continue;
+      }
+      switch (voxelState(candidate, layer)) {
+        case 0: //free
+        case 2: {//unknown
+          // Adjacent free space to continue the search.
+
+          
+          open_stack.push(candidate);
+          closed_list.insert(candidate);
+          
+          break;
+        }
+        case 1:
+        default:
+          // We hit an obstacle.
+          obstacles->emplace_back(candidate);
+          break;
+      }
+    }
+  }
+  
+  auto t_end = std::chrono::high_resolution_clock::now();
+std::cout<<"observed "<< closed_list.size() <<" voxels\n";
+ //voxels->clear();
+ //voxels->reserve(closed_list.size());
+  std::copy(closed_list.begin(), closed_list.end(),  std::back_inserter(*voxels));
+
+  //return closed_list;
 }
 
 // unit_test
