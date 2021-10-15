@@ -25,11 +25,11 @@
 
 using namespace voxblox;
 
-bool isObserved(const voxblox::TsdfVoxel& voxel, float voxel_size) {
+bool isOccupied(const voxblox::TsdfVoxel& voxel, float voxel_size) {
     return voxblox::visualizeOccupiedTsdfVoxels(voxel, voxblox::Point(), voxel_size);
 }
 
-bool isObserved(const voxblox::SSCOccupancyVoxel& voxel, float voxel_size) {
+bool isOccupied(const voxblox::SSCOccupancyVoxel& voxel, float voxel_size) {
     voxblox::Color color;
     return voxblox::visualizeSSCOccupancyVoxels(voxel, voxblox::Point(), &color);
 }
@@ -54,7 +54,7 @@ void calculate_Intersection_difference(const voxblox::Layer<VoxelTypeA>& layer,
             // voxblox::Point coord = block.computeCoordinatesFromLinearIndex(linear_index);
             auto gt_voxel = block.getVoxelByLinearIndex(linear_index);
 
-            if (isObserved(gt_voxel, layer.voxel_size())) {
+            if (isOccupied(gt_voxel, layer.voxel_size())) {
                 // voxel is observed in first layer. check if it exists in other layer
 
                 // get global voxel index
@@ -66,7 +66,7 @@ void calculate_Intersection_difference(const voxblox::Layer<VoxelTypeA>& layer,
                 // see if this voxel is observed in other layer
                 auto observed_voxel = otherLayer.getVoxelPtrByGlobalIndex(global_voxel_idx);
 
-                if (observed_voxel != nullptr && isObserved(*observed_voxel, otherLayer.voxel_size())) {
+                if (observed_voxel != nullptr && isOccupied(*observed_voxel, otherLayer.voxel_size())) {
                     intersection->emplace_back(global_voxel_idx);
                 } else {
                     difference->emplace_back(global_voxel_idx);
