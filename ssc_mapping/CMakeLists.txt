@@ -24,10 +24,22 @@ cs_add_executable(${PROJECT_NAME}_node
 )
 
 cs_add_executable(ssc_map_eval_node
-        src/ssc_map_eval_node.cpp
+        src/eval/ssc_map_eval_node.cpp
 )
+
+cs_add_executable(ssc_map_eval_test_node
+        src/eval/ssc_map_eval_test_node.cpp
+)
+
+cs_add_executable(fill_ground_truth_map_node
+        src/eval/fill_ground_truth_map.cpp
+)
+
+
 target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME} ${catkin_LIBRARIES} )
 target_link_libraries(ssc_map_eval_node ${PROJECT_NAME} ${catkin_LIBRARIES} )
+target_link_libraries(ssc_map_eval_test_node ${PROJECT_NAME} ${catkin_LIBRARIES} )
+target_link_libraries(fill_ground_truth_map_node ${PROJECT_NAME} ${catkin_LIBRARIES} )
 
 cs_install()
 cs_export()

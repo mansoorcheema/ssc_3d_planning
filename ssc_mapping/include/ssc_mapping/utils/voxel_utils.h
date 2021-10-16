@@ -1,11 +1,12 @@
 #ifndef SSC_VOXEL_UTILS_H_
 #define SSC_VOXEL_UTILS_H_
 
+#include <voxblox/interpolator/interpolator.h>
 #include <voxblox/utils/evaluation_utils.h>
 #include <voxblox/utils/voxel_utils.h>
-#include <voxblox/interpolator/interpolator.h>
 
 #include "ssc_mapping/core/voxel.h"
+#include "ssc_mapping/visualization/visualization.h"
 
 namespace voxblox {
 
@@ -41,11 +42,10 @@ inline SSCOccupancyVoxel Interpolator<SSCOccupancyVoxel>::interpVoxel(const Inte
     return voxel;
 }
 
-
 // part 2 merging upsampled temp layer into voxel of map layer.
 // Note; updated to use log probs and label fusion like in
 // scfusion
- // namespace utils
+// namespace utils
 template <>
 void mergeVoxelAIntoVoxelB(const SSCOccupancyVoxel& voxel_A, SSCOccupancyVoxel* voxel_B) {
     voxel_B->label = voxel_A.label;
@@ -59,7 +59,21 @@ template <>
 bool isObservedVoxel(const SSCOccupancyVoxel& voxel) {
     return voxel.observed;
 }
+
+bool isOccupied(const voxblox::TsdfVoxel& voxel, float voxel_size) {
+    constexpr float kMinWeight = 1e-3;
+    if (voxel.weight > kMinWeight && voxel.distance <= voxel_size) {
+        return true;
+    }
+    return false;
+}
+
+bool isOccupied(const voxblox::SSCOccupancyVoxel& voxel, float voxel_size) {
+    voxblox::Color color;
+    return voxblox::visualizeSSCOccupancyVoxels(voxel, voxblox::Point(), &color);
+}
+
 }  // namespace utils
 }  // namespace voxblox
 
-#endif //SSC_VOXEL_UTILS_H_
+#endif  // SSC_VOXEL_UTILS_H_

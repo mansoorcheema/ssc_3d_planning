@@ -72,4 +72,41 @@ void createOccupancyBlocksFromLayer(const Layer<VoxelType>& layer,
 }                                       
 }  // namespace voxblox
 
+namespace ssc_mapping {
+    // Creates a pointcloud from voxel indices
+template <typename T>
+void createPointCloudFromVoxelIndices(const T& voxels,
+                                      pcl::PointCloud<pcl::PointXYZRGB>* pointcloud, const voxblox::Color& color, const float voxel_size = 0.08) {
+    for (auto voxel : voxels) {
+        pcl::PointXYZRGB point;
+        point.x = voxel.x() * voxel_size + (voxel_size/2);
+        point.y = voxel.y() * voxel_size + (voxel_size/2);
+        point.z = voxel.z() * voxel_size + (voxel_size/2);
+        point.r = color.r;
+        point.g = color.g;
+        point.b = color.b;
+        pointcloud->push_back(point);
+    }
+    pointcloud->header.frame_id = "world";
+}
+
+// Creates a pointcloud from voxel indices
+template <typename T>
+void createPointCloudFromVoxelIndices(const T& voxels,
+                                      pcl::PointCloud<pcl::PointXYZRGBA>* pointcloud, const voxblox::Color& color, const float voxel_size = 0.08) {
+    for (auto voxel : voxels) {
+        pcl::PointXYZRGBA point;
+        point.x = voxel.x() * voxel_size + (voxel_size/2);
+        point.y = voxel.y() * voxel_size + (voxel_size/2);
+        point.z = voxel.z() * voxel_size + (voxel_size/2);
+        point.r = color.r;
+        point.g = color.g;
+        point.b = color.b;
+        point.a = color.a;
+        pointcloud->push_back(point);
+    }
+    pointcloud->header.frame_id = "world";
+}
+}
+
 #endif  // SSC_VISUALIZATION_H_
