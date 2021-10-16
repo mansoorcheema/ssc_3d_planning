@@ -72,11 +72,12 @@ struct CoverageMetrics {
     }
 };
 
-
+// return the ration of sizes
 float operator/(const voxblox::LongIndexSet& i1, const voxblox::LongIndexSet& i2) {
     return i1.size() / float(i2.size());
 }
 
+// finds intersection of two unordered sets (hashmaps with O(1) search)
 voxblox::LongIndexSet set_intersection(const voxblox::LongIndexSet& index_set_a,
                                        const voxblox::LongIndexSet& index_set_b) {
     voxblox::LongIndexSet intersect;
@@ -90,6 +91,7 @@ voxblox::LongIndexSet set_intersection(const voxblox::LongIndexSet& index_set_a,
     return intersect;
 }
 
+// return union of two unordered hash maps. 
 voxblox::LongIndexSet set_union(const voxblox::LongIndexSet& index_set_a, const voxblox::LongIndexSet& index_set_b) {
     voxblox::LongIndexSet union_elements;
 
@@ -131,17 +133,6 @@ QualityMetrics calculate_quality_metrics(const voxblox::LongIndexSet& gt_occ_all
     metrics.IoU_occ = map_obs_occ_correct / set_union(map_obs_occ, gt_obs_occ);
     metrics.IoU_free = map_obs_free_correct / set_union(map_obs_free, gt_obs_free);
 
-    // printf("------ Quality Metrics Evaluation --------\n");
-    // printf("IoU_occ: %0.2lf \n", IoU_occ);
-    // printf("IoU_free: %0.2lf \n", IoU_free);
-    // printf("Precision_occ: %0.2lf \n", Precision_occ);
-    // printf("Precision_free: %0.2lf \n", Precision_free);
-    // printf("Precision_overall: %0.2lf \n", Precision_overall);
-    // printf("Recall_occ: %0.2lf \n", Recall_occ);
-    // printf("Recall_free: %0.2lf \n", Recall_free);
-    // // printf("gt_occupied_voxels: %d\n", gt_occupied_voxels);
-    // // printf("observed_voxels: %d\n",observed_voxels);
-    // printf("---------------------------------\n");
     return metrics;
 }
 
@@ -271,6 +262,8 @@ void test_eval_metrics() {
 
     // test evaluation
     // todo - add quality metrics
+    // update - depracated - added test to 
+    // ssc_map_eval_test_node
 }
 }  // namespace tests
 }  // namespace ssc_mapping

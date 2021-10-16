@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     CHECK(ground_truth_layer->voxel_size() == observed_layer->voxel_size())
         << "Error! Observed Layer and groundtruth layers should have same voxel size!";
 
-    if (argc > 5 && argv[5] == "true") {
+    if (argc > 5 && std::string("true").compare(argv[5]) == 0) {
         refine_observed_layer(*ground_truth_layer, observed_layer);
     }
 

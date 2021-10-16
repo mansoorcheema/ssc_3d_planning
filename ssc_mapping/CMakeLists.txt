@@ -32,7 +32,7 @@ cs_add_executable(ssc_map_eval_test_node
 )
 
 cs_add_executable(fill_ground_truth_map_node
-        src/eval/fill_ground_truth_map.cpp
+        src/eval/fill_ground_truth_map_node.cpp
 )
 
 

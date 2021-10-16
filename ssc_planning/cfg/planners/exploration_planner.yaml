@@ -13,19 +13,19 @@ expand_batch: 20
 visualize_gain: true
 highlight_executed_trajectory: true
 
-map:
-  type: "SSCVoxbloxOccupancyMap"
-  voxel_size: 0.08
-  fusion_strategy: 1
-  pred_conf: 0.75
-  max_weight: 30.0
-  prob_occupied: 0.68
-  prob_free: 0.475
-  min_prob: 0.12
-  max_prob: 0.97
-
 # map:
-#   type: "VoxbloxMap"
+#   type: "SSCVoxbloxOccupancyMap"
+#   voxel_size: 0.08
+#   fusion_strategy: 1
+#   pred_conf: 0.75
+#   max_weight: 30.0
+#   prob_occupied: 0.68
+#   prob_free: 0.475
+#   min_prob: 0.12
+#   max_prob: 0.97
+
+map:
+  type: "VoxbloxMap"
 
 system_constraints:
   v_max: 3.0

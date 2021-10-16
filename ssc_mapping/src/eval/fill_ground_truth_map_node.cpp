@@ -27,10 +27,18 @@ int main(int argc, char** argv) {
     // parameters
     std::string input_path="/home/mansoor/flat.tsdf";
     std::string save_path="/home/mansoor/flat_filled_free.tsdf";
-    // load params
-    nh_private.param("input_path", input_path, input_path);
-    nh_private.param("save_path", save_path, save_path);
-    nh_private.param("keep_occupancy", keep_occupancy, keep_occupancy);
+
+    // if command line arguments are passed, use them
+    if (argc > 3) {
+        input_path = argv[1];
+        save_path = argv[2];
+        keep_occupancy = std::string("true").compare(argv[3]) == 0;
+    } else {
+        // load params from ros
+        nh_private.param("input_path", input_path, input_path);
+        nh_private.param("save_path", save_path, save_path);
+        nh_private.param("keep_occupancy", keep_occupancy, keep_occupancy);
+    }
 
     voxblox::Layer<voxblox::TsdfVoxel>::Ptr ground_truth_layer, ground_truth_layer_refined;
 
