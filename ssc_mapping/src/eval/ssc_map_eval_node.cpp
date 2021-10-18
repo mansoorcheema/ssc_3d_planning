@@ -1,5 +1,37 @@
+#include <tuple>
 #include "ssc_mapping/eval/map_eval.h"
 #include "ssc_mapping/utils/evaluation_utils.h"
+
+using IndexSet = voxblox::LongIndexSet;
+typedef std::tuple<IndexSet, IndexSet, IndexSet, IndexSet, IndexSet, IndexSet, IndexSet, IndexSet> VoxelEvalData;
+
+template <typename VoxelTypeA, typename VoxelTypeB>
+VoxelEvalData get_voxel_data_from_layer(std::shared_ptr<voxblox::Layer<VoxelTypeA>> ground_truth_layer,
+                                        std::shared_ptr<voxblox::Layer<VoxelTypeB>> observed_layer,
+                                        bool refine_ob_layer) {
+    CHECK(ground_truth_layer->voxel_size() == observed_layer->voxel_size())
+        << "Error! Observed Layer and groundtruth layers should have same voxel size!";
+
+    if (refine_ob_layer) {
+        LOG(INFO) << "Updating observed layer by discarding voxels not observed in ground truth.";
+        refine_observed_layer(*ground_truth_layer, observed_layer);
+    }
+
+    IndexSet gt_occ_voxels, gt_free_voxels;
+    get_free_and_occupied_voxels_from_layer(*ground_truth_layer, &gt_occ_voxels, &gt_free_voxels);
+
+    IndexSet map_obs_occ_voxels, map_obs_free_voxels;
+    get_free_and_occupied_voxels_from_layer(*observed_layer, &map_obs_occ_voxels, &map_obs_free_voxels);
+
+    IndexSet gt_obs_occ, gt_unobs_occ;
+    split_observed_unobserved_voxels(*observed_layer, gt_occ_voxels, &gt_obs_occ, &gt_unobs_occ);
+
+    IndexSet gt_obs_free, gt_unobs_free;
+    split_observed_unobserved_voxels(*observed_layer, gt_free_voxels, &gt_obs_free, &gt_unobs_free);
+
+    return {gt_occ_voxels, gt_free_voxels, map_obs_occ_voxels, map_obs_free_voxels,
+            gt_obs_occ,    gt_obs_free,    gt_unobs_occ,       gt_unobs_free};
+}
 
 int main(int argc, char** argv) {
     
@@ -11,6 +43,7 @@ int main(int argc, char** argv) {
     // init ros and google logging
     ros::init(argc, argv, "ssc_mapping_eval");
     google::InitGoogleLogging(argv[0]);
+    google::SetCommandLineOption("GLOG_minloglevel", "0");
     google::InstallFailureSignalHandler();
     google::ParseCommandLineFlags(&argc, &argv, false);
     ros::NodeHandle nh("");
@@ -28,33 +61,30 @@ int main(int argc, char** argv) {
     
     voxblox::Layer<voxblox::TsdfVoxel>::Ptr ground_truth_layer;
     voxblox::Layer<voxblox::TsdfVoxel>::Ptr observed_layer;
+    voxblox::Layer<voxblox::SSCOccupancyVoxel>::Ptr ssc_observed_layer;
 
-    // load tsdf maps
-    voxblox::io::LoadLayer<voxblox::TsdfVoxel>(argv[1], &ground_truth_layer);
-    voxblox::io::LoadLayer<voxblox::TsdfVoxel>(argv[2], &observed_layer);
+    // load ground truth
+    voxblox::io::LoadLayer<voxblox::TsdfVoxel>(gt_layer_path, &ground_truth_layer);
 
-    CHECK(ground_truth_layer->voxel_size() == observed_layer->voxel_size())
-        << "Error! Observed Layer and groundtruth layers should have same voxel size!";
-
-    if (refine_ob_layer) {
-         LOG(INFO) << "Updating observed layer by discarding voxels not observed in ground truth.";
-        refine_observed_layer(*ground_truth_layer, observed_layer);
-    }
-    
     //##########################################
     // Evaluation Metrics
     //##########################################
-    voxblox::LongIndexSet gt_occ_voxels, gt_free_voxels;
-    get_free_and_occupied_voxels_from_layer(*ground_truth_layer, &gt_occ_voxels, &gt_free_voxels);
+    
+    VoxelEvalData voxel_eval_data;
+    
+    if (observed_layer_path.find(voxblox::voxel_types::kSSCOccupancy) == std::string::npos) {
+        voxblox::io::LoadLayer<voxblox::TsdfVoxel>(observed_layer_path, &observed_layer);
+        voxel_eval_data = get_voxel_data_from_layer(ground_truth_layer, observed_layer, refine_ob_layer);
+    } else {
+        voxblox::io::LoadLayer<voxblox::SSCOccupancyVoxel>(observed_layer_path, &ssc_observed_layer);
+        voxel_eval_data = get_voxel_data_from_layer(ground_truth_layer, ssc_observed_layer, refine_ob_layer);
+    }
 
-    voxblox::LongIndexSet map_obs_occ_voxels, map_obs_free_voxels;
-    get_free_and_occupied_voxels_from_layer(*observed_layer, &map_obs_occ_voxels, &map_obs_free_voxels);
+    IndexSet gt_occ_voxels, gt_free_voxels, map_obs_occ_voxels, map_obs_free_voxels, gt_obs_occ,
+        gt_obs_free, gt_unobs_occ, gt_unobs_free;
 
-    voxblox::LongIndexSet gt_obs_occ, gt_unobs_occ;
-    split_observed_unobserved_voxels(*observed_layer, gt_occ_voxels, &gt_obs_occ, &gt_unobs_occ);
-
-    voxblox::LongIndexSet gt_obs_free, gt_unobs_free;
-    split_observed_unobserved_voxels(*observed_layer, gt_free_voxels, &gt_obs_free, &gt_unobs_free);
+    std::tie(gt_occ_voxels, gt_free_voxels, map_obs_occ_voxels, map_obs_free_voxels, gt_obs_occ, gt_obs_free,
+                 gt_unobs_occ, gt_unobs_free) = voxel_eval_data;
 
     auto quality_metrics = ssc_mapping::evaluation::calculate_quality_metrics(
         gt_occ_voxels, gt_obs_occ, gt_free_voxels, gt_obs_free, map_obs_occ_voxels, map_obs_free_voxels);
@@ -86,7 +116,7 @@ int main(int argc, char** argv) {
     }
 
     if (!coverage_metrics_path.empty()) {
-        LOG(INFO) << "Adding coverage metrics to " << quality_metrics_path <<std::endl;
+        LOG(INFO) << "Adding coverage metrics to " << coverage_metrics_path <<std::endl;
         // write coverage metrics to file
         std::ofstream file(coverage_metrics_path, std::ios::app);
 

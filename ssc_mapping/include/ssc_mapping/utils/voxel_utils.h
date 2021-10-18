@@ -4,6 +4,7 @@
 #include <voxblox/interpolator/interpolator.h>
 #include <voxblox/utils/evaluation_utils.h>
 #include <voxblox/utils/voxel_utils.h>
+#include <voxblox/core/block.h>
 
 #include "ssc_mapping/core/voxel.h"
 #include "ssc_mapping/visualization/visualization.h"
@@ -54,6 +55,56 @@ void mergeVoxelAIntoVoxelB(const SSCOccupancyVoxel& voxel_A, SSCOccupancyVoxel* 
     voxel_B->probability_log = voxel_A.probability_log;
 }
 
+template <>
+inline void Block<SSCOccupancyVoxel>::serializeToIntegers(
+    std::vector<uint32_t>* data) const {
+  CHECK_NOTNULL(data);
+  constexpr size_t kNumDataPacketsPerVoxel = 4u;
+  data->clear();
+  data->reserve(num_voxels_ * kNumDataPacketsPerVoxel);
+  for (size_t voxel_idx = 0u; voxel_idx < num_voxels_; ++voxel_idx) {
+    const SSCOccupancyVoxel& voxel = voxels_[voxel_idx];
+
+    const uint32_t* bytes_1_ptr =
+        reinterpret_cast<const uint32_t*>(&voxel.probability_log);
+    data->push_back(*bytes_1_ptr);
+    data->push_back(static_cast<uint32_t>(voxel.observed));
+
+    const uint32_t* bytes_3_ptr =
+        reinterpret_cast<const uint32_t*>(&voxel.label);
+
+    data->push_back(*bytes_3_ptr);
+
+    const uint32_t* bytes_4_ptr =
+        reinterpret_cast<const uint32_t*>(&voxel.label_weight);
+    data->push_back(*bytes_4_ptr);
+  }
+  CHECK_EQ(num_voxels_ * kNumDataPacketsPerVoxel, data->size());
+}
+
+template <>
+inline void Block<SSCOccupancyVoxel>::deserializeFromIntegers(
+    const std::vector<uint32_t>& data) {
+  constexpr size_t kNumDataPacketsPerVoxel = 4u;
+  const size_t num_data_packets = data.size();
+  CHECK_EQ(num_voxels_ * kNumDataPacketsPerVoxel, num_data_packets);
+  for (size_t voxel_idx = 0u, data_idx = 0u;
+       voxel_idx < num_voxels_ && data_idx < num_data_packets;
+       ++voxel_idx, data_idx += kNumDataPacketsPerVoxel) {
+    const uint32_t bytes_1 = data[data_idx];
+    const uint32_t bytes_2 = data[data_idx + 1u];
+    const uint32_t bytes_3 = data[data_idx + 2u];
+    const uint32_t bytes_4 = data[data_idx + 3u];
+
+    SSCOccupancyVoxel& voxel = voxels_[voxel_idx];
+
+    memcpy(&(voxel.probability_log), &bytes_1, sizeof(bytes_1));
+    voxel.observed = static_cast<bool>(bytes_2 & 0x000000FF);
+    memcpy(&(voxel.label), &bytes_3, sizeof(bytes_3));
+    memcpy(&(voxel.label_weight), &bytes_4, sizeof(bytes_4));
+  }
+}
+
 namespace utils {
 template <>
 bool isObservedVoxel(const SSCOccupancyVoxel& voxel) {
@@ -73,7 +124,16 @@ bool isOccupied(const voxblox::SSCOccupancyVoxel& voxel, float voxel_size) {
     return voxblox::visualizeSSCOccupancyVoxels(voxel, voxblox::Point(), &color);
 }
 
+void setUnOccupied(voxblox::SSCOccupancyVoxel* voxel) {
+    voxel->observed = false;
+}
+
+void setUnOccupied(voxblox::TsdfVoxel* voxel) {
+    voxel->weight = 0;
+}
+
 }  // namespace utils
+
 }  // namespace voxblox
 
 #endif  // SSC_VOXEL_UTILS_H_

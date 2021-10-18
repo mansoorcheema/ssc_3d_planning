@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /Data/simulations/catkin_ws/src/ssc_3d_planning/ssc_mapping/cmake-build-debug/devel/setup.sh

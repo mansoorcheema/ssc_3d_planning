@@ -118,8 +118,9 @@ void compute_free_occupied_space_frontier(
 
 // Refine an observed layer by ignoring all voxels in observed layer that
 // are not observed in ground truth layer.
-void refine_observed_layer(const voxblox::Layer<voxblox::TsdfVoxel>& gt_layer,
-                           voxblox::Layer<voxblox::TsdfVoxel>::Ptr observed_layer) {
+template <typename VoxelTypeA, typename VoxelTypeB >
+void refine_observed_layer(const voxblox::Layer<VoxelTypeA>& gt_layer,
+                           std::shared_ptr<voxblox::Layer<VoxelTypeB>> observed_layer) {
 
     CHECK(gt_layer.voxel_size() == observed_layer->voxel_size()) << "Layers should have same voxel size.";
     CHECK(gt_layer.voxels_per_side() == observed_layer->voxels_per_side()) << "Layers should have same block size.";
@@ -134,7 +135,7 @@ void refine_observed_layer(const voxblox::Layer<voxblox::TsdfVoxel>& gt_layer,
 
         for (size_t linear_index = 0; linear_index < num_voxels_per_block; ++linear_index) {
             // voxblox::Point coord = block.computeCoordinatesFromLinearIndex(linear_index);
-            voxblox::TsdfVoxel* voxel = &block->getVoxelByLinearIndex(linear_index);
+            auto voxel = &block->getVoxelByLinearIndex(linear_index);
             voxblox::VoxelIndex voxel_idx = block->computeVoxelIndexFromLinearIndex(linear_index);
                 voxblox::GlobalIndex global_voxel_idx =
                     voxblox::getGlobalVoxelIndexFromBlockAndVoxelIndex(block_idx, voxel_idx, gt_layer.voxels_per_side());
@@ -143,9 +144,10 @@ void refine_observed_layer(const voxblox::Layer<voxblox::TsdfVoxel>& gt_layer,
                 auto gt_voxel = gt_layer.getVoxelPtrByGlobalIndex(global_voxel_idx);
 
                 if(!gt_voxel) {
-                    voxel->weight = 0.0f;//voxel not observed in gt_map so ignore voxels that are not observed in gt map
-                } else if(gt_voxel->weight < 1e-3) {
-                    voxel->weight = 0.0f;
+                    //voxel not observed in gt_map so ignore voxels that are not observed in gt map
+                    voxblox::utils::setUnOccupied(voxel);
+                } else if(!voxblox::utils::isObservedVoxel(*gt_voxel)) {
+                    voxblox::utils::setUnOccupied(voxel);
                 }
         }
     }
@@ -294,68 +296,42 @@ void calculate_Intersection_difference(const voxblox::Layer<VoxelTypeA>& layer,
 
 // finds which unobserved voxels in layer are also unobserved in othe layer.
 // Return an global indices of such voxels
-template <typename VoxelTypeA, typename VoxelTypeB>
-void find_unobserved_free_voxels(const voxblox::Layer<VoxelTypeA>& layer,
-                                                 const voxblox::Layer<VoxelTypeB>& otherLayer,
-                                                 voxblox::GlobalIndexVector* out_voxels) {
-    size_t vps = layer.voxels_per_side();
-    size_t num_voxels_per_block = vps * vps * vps;
+// template <typename VoxelTypeA, typename VoxelTypeB>
+// void find_unobserved_free_voxels(const voxblox::Layer<VoxelTypeA>& layer,
+//                                                  const voxblox::Layer<VoxelTypeB>& otherLayer,
+//                                                  voxblox::GlobalIndexVector* out_voxels) {
+//     size_t vps = layer.voxels_per_side();
+//     size_t num_voxels_per_block = vps * vps * vps;
 
-    voxblox::BlockIndexList blocks;
-    layer.getAllAllocatedBlocks(&blocks);
+//     voxblox::BlockIndexList blocks;
+//     layer.getAllAllocatedBlocks(&blocks);
 
-    for (const voxblox::BlockIndex& index : blocks) {
-        // Iterate over all voxels in said blocks.
-        const voxblox::Block<voxblox::TsdfVoxel>& block = layer.getBlockByIndex(index);
+//     for (const voxblox::BlockIndex& index : blocks) {
+//         // Iterate over all voxels in said blocks.
+//         const voxblox::Block<voxblox::TsdfVoxel>& block = layer.getBlockByIndex(index);
 
-        for (size_t linear_index = 0; linear_index < num_voxels_per_block; ++linear_index) {
-            // voxblox::Point coord = block.computeCoordinatesFromLinearIndex(linear_index);
-            auto voxel = block.getVoxelByLinearIndex(linear_index);
+//         for (size_t linear_index = 0; linear_index < num_voxels_per_block; ++linear_index) {
+//             // voxblox::Point coord = block.computeCoordinatesFromLinearIndex(linear_index);
+//             auto voxel = block.getVoxelByLinearIndex(linear_index);
 
-            if (voxel.weight < 1e-6) {// voxel is unobserved in layer
-                // check if its free or un observed in other layer
-                voxblox::VoxelIndex voxel_idx = block.computeVoxelIndexFromLinearIndex(linear_index);
-                voxblox::BlockIndex block_idx = index;
-                voxblox::GlobalIndex global_voxel_idx =
-                    voxblox::getGlobalVoxelIndexFromBlockAndVoxelIndex(block_idx, voxel_idx, layer.voxels_per_side());
+//             if (voxel.weight < 1e-6) {// voxel is unobserved in layer
+//                 // check if its free or un observed in other layer
+//                 voxblox::VoxelIndex voxel_idx = block.computeVoxelIndexFromLinearIndex(linear_index);
+//                 voxblox::BlockIndex block_idx = index;
+//                 voxblox::GlobalIndex global_voxel_idx =
+//                     voxblox::getGlobalVoxelIndexFromBlockAndVoxelIndex(block_idx, voxel_idx, layer.voxels_per_side());
 
-                    auto observed_voxel = otherLayer.getVoxelPtrByGlobalIndex(global_voxel_idx);
+//                     auto observed_voxel = otherLayer.getVoxelPtrByGlobalIndex(global_voxel_idx);
 
-                    if (observed_voxel == nullptr) {
-                        out_voxels->emplace_back(global_voxel_idx);
-                    } else if(observed_voxel->weight < 1e-6) {
-                        out_voxels->emplace_back(global_voxel_idx);
-                    }
-            }
-        }
-    }
-}
-
-template <typename VoxelType>
-void calculateFreeObservedVoxels(const voxblox::Layer<VoxelType>& layer, voxblox::GlobalIndexVector* voxels) {
-    size_t vps = layer.voxels_per_side();
-    size_t num_voxels_per_block = vps * vps * vps;
-
-    voxblox::BlockIndexList blocks;
-    layer.getAllAllocatedBlocks(&blocks);
-    for (const voxblox::BlockIndex& index : blocks) {
-        // Iterate over all voxels in said blocks.
-        const voxblox::Block<voxblox::TsdfVoxel>& block = layer.getBlockByIndex(index);
-
-        for (size_t linear_index = 0; linear_index < num_voxels_per_block; ++linear_index) {
-            // voxblox::Point coord = block.computeCoordinatesFromLinearIndex(linear_index);
-            auto voxel = block.getVoxelByLinearIndex(linear_index);
-
-            if(voxel.weight > 1e-6 ) {
-                voxblox::VoxelIndex voxel_idx = block.computeVoxelIndexFromLinearIndex(linear_index);
-                voxblox::BlockIndex block_idx = index;
-                voxblox::GlobalIndex global_voxel_idx =
-                    voxblox::getGlobalVoxelIndexFromBlockAndVoxelIndex(block_idx, voxel_idx, layer.voxels_per_side());
-                voxels->emplace_back(global_voxel_idx);
-            }
-        }
-    }
-}
+//                     if (observed_voxel == nullptr) {
+//                         out_voxels->emplace_back(global_voxel_idx);
+//                     } else if(observed_voxel->weight < 1e-6) {
+//                         out_voxels->emplace_back(global_voxel_idx);
+//                     }
+//             }
+//         }
+//     }
+// }
 
 // remove voxel indices that correspont to voxels that
 // are inside walls or beneath surface. Such voxels have
@@ -436,7 +412,7 @@ void split_observed_unobserved_voxels(const voxblox::Layer<VoxelType>& layer, co
         if (voxel == nullptr) {
             // voxel does not exist, so its un observed
             out_un_observed_voxels->insert(voxel_idx);
-        } else if (voxel->weight > 1e-6) {
+        } else if (voxblox::utils::isObservedVoxel(*voxel)) {
             // voxel exists and is observed
             out_observed_voxels->insert(voxel_idx);
         } else {

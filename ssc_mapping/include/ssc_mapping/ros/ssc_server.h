@@ -4,6 +4,8 @@
 #include <ros/ros.h>
 #include <ssc_msgs/SSCGrid.h>
 #include <voxblox/core/layer.h>
+#include <voxblox/io/layer_io.h>
+#include <voxblox_msgs/FilePath.h>
 #include "ssc_mapping/core/ssc_map.h"
 #include "ssc_mapping/fusion/base_fusion.h"
 
@@ -33,12 +35,20 @@ class SSCServer {
 
     void publishSSCOccupiedNodes();
 
+    virtual bool saveMap(const std::string& file_path);
+
+    bool saveMapCallback(voxblox_msgs::FilePath::Request& request,     // NOLINT
+                       voxblox_msgs::FilePath::Response& response); 
+
    private:
     bool publish_pointclouds_on_update_;
     std::string world_frame_;
     std::string ssc_topic_;
     std::shared_ptr<SSCMap> ssc_map_;
     std::shared_ptr<ssc_fusion::BaseFusion> base_fusion_;
+
+    //services/publishers/subscribers
+    ros::ServiceServer save_map_srv_;
     ros::Subscriber ssc_map_sub_;
     ros::Publisher ssc_pointcloud_pub_;
     ros::Publisher occupancy_marker_pub_;

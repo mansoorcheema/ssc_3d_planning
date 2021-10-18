@@ -33,6 +33,9 @@ SSCServer::SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_privat
 
     //publish fused maps as occupancy nodes - marker array
     occupancy_marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("ssc_occupied_nodes", 1, true);
+
+    save_map_srv_ = nh_private_.advertiseService(
+      "save_map", &SSCServer::saveMapCallback, this);
 }
 
 ssc_fusion::BaseFusion::Config SSCServer::loadFusionConfigROS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private) {
@@ -47,6 +50,16 @@ ssc_fusion::BaseFusion::Config SSCServer::loadFusionConfigROS(const ros::NodeHan
     nh.param("fusion_strategy", fusion_config.fusion_strategy, fusion_config.fusion_strategy);
 
     return fusion_config;
+}
+
+bool SSCServer::saveMap(const std::string& file_path) {
+  // Inheriting classes should add saving other layers to this function.
+  return io::SaveLayer(ssc_map_->getSSCLayer(), file_path);
+}
+
+bool SSCServer::saveMapCallback(voxblox_msgs::FilePath::Request& request,
+                                 voxblox_msgs::FilePath::Response& ) { 
+  return saveMap(request.file_path);
 }
 
 void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
