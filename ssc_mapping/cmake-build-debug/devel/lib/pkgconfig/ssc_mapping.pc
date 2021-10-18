@@ -1,8 +1,0 @@
-prefix=/Data/simulations/catkin_ws/src/ssc_3d_planning/ssc_mapping/cmake-build-debug/devel
-
-Name: ssc_mapping
-Description: Description of ssc_mapping
-Version: 0.0.0
-Cflags: -I/Data/simulations/catkin_ws/src/ssc_3d_planning/ssc_mapping/include
-Libs: -L${prefix}/lib -lssc_mapping
-Requires: voxblox_ros voxblox ssc_msgs
