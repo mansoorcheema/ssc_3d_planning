@@ -12,7 +12,7 @@
 namespace voxblox {
 
 SSCServer::SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private, const ssc_fusion::BaseFusion::Config& fusion_config,  const SSCMap::Config& config)
-    : nh_(nh), nh_private_(nh_private), publish_pointclouds_on_update_(true), ssc_topic_("ssc"), world_frame_("odom") {
+    : nh_(nh), nh_private_(nh_private), publish_pointclouds_on_update_(false), ssc_topic_("ssc"), world_frame_("odom") {
     ssc_map_.reset(new SSCMap(config));
 
     if (fusion_config.fusion_strategy == ssc_fusion::strategy::log_odds) {
@@ -28,28 +28,50 @@ SSCServer::SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_privat
     nh.param("ssc_topic", ssc_topic_, ssc_topic_);
     ssc_map_sub_ = nh_.subscribe(ssc_topic_, 1, &SSCServer::sscCallback, this);
 
-    //publish fused maps as occupancy pointcloud
-    ssc_pointcloud_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZRGB> >("occupancy_pointcloud", 1, true);
-
-    //publish fused maps as occupancy nodes - marker array
-    occupancy_marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("ssc_occupied_nodes", 1, true);
+    nh_private_.param("publish_pointclouds", publish_pointclouds_on_update_, publish_pointclouds_on_update_);
 
     save_map_srv_ = nh_private_.advertiseService(
       "save_map", &SSCServer::saveMapCallback, this);
+
+    if (publish_pointclouds_on_update_) {
+        // publish fused maps as occupancy pointcloud
+        ssc_pointcloud_pub_ =
+            nh_private_.advertise<pcl::PointCloud<pcl::PointXYZRGB> >("occupancy_pointcloud", 1, true);
+
+        // publish fused maps as occupancy nodes - marker array
+        occupancy_marker_pub_ = nh_private_.advertise<visualization_msgs::MarkerArray>("ssc_occupied_nodes", 1, true);
+    }
 }
 
-ssc_fusion::BaseFusion::Config SSCServer::loadFusionConfigROS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private) {
+ssc_fusion::BaseFusion::Config SSCServer::getFusionConfigROSParam(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private) {
     ssc_fusion::BaseFusion::Config fusion_config;
 
-    nh.param("fusion_pred_conf", fusion_config.pred_conf,  fusion_config.pred_conf);
-    nh.param("fusion_max_weight", fusion_config.max_weight, fusion_config.max_weight);
-    nh.param("fusion_prob_occupied", fusion_config.prob_occupied, fusion_config.prob_occupied);
-    nh.param("fusion_prob_free", fusion_config.prob_free, fusion_config.prob_free);
-    nh.param("fusion_min_prob", fusion_config.min_prob, fusion_config.min_prob);
-    nh.param("fusion_max_prob", fusion_config.max_prob, fusion_config.max_prob);
-    nh.param("fusion_strategy", fusion_config.fusion_strategy, fusion_config.fusion_strategy);
+    nh_private.param("fusion_pred_conf", fusion_config.pred_conf,  fusion_config.pred_conf);
+    nh_private.param("fusion_max_weight", fusion_config.max_weight, fusion_config.max_weight);
+    nh_private.param("fusion_prob_occupied", fusion_config.prob_occupied, fusion_config.prob_occupied);
+    nh_private.param("fusion_prob_free", fusion_config.prob_free, fusion_config.prob_free);
+    nh_private.param("fusion_min_prob", fusion_config.min_prob, fusion_config.min_prob);
+    nh_private.param("fusion_max_prob", fusion_config.max_prob, fusion_config.max_prob);
+    nh_private.param("fusion_strategy", fusion_config.fusion_strategy, fusion_config.fusion_strategy);
 
     return fusion_config;
+}
+
+SSCMap::Config SSCServer::getSSCMapConfigFromRosParam(const ros::NodeHandle& nh_private) {
+    SSCMap::Config ssc_map_config;
+    double voxel_size = ssc_map_config.ssc_voxel_size;
+    int voxels_per_side = ssc_map_config.ssc_voxels_per_side;
+    nh_private.param("ssc_voxel_size", voxel_size, voxel_size);
+    nh_private.param("ssc_voxels_per_side", voxels_per_side, voxels_per_side);
+    if (!isPowerOfTwo(voxels_per_side)) {
+        ROS_ERROR("voxels_per_side must be a power of 2, setting to default value");
+        voxels_per_side = ssc_map_config.ssc_voxels_per_side;
+    }
+
+    ssc_map_config.ssc_voxel_size = static_cast<FloatingPoint>(voxel_size);
+    ssc_map_config.ssc_voxels_per_side = voxels_per_side;
+
+    return ssc_map_config;
 }
 
 bool SSCServer::saveMap(const std::string& file_path) {

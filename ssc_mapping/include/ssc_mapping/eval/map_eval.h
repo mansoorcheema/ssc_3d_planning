@@ -91,6 +91,21 @@ voxblox::LongIndexSet set_intersection(const voxblox::LongIndexSet& index_set_a,
     return intersect;
 }
 
+// finds difference of two unordered set. Iddexes that are present in set a but absent
+// in set b
+voxblox::LongIndexSet set_difference(const voxblox::LongIndexSet& index_set_a,
+                                       const voxblox::LongIndexSet& index_set_b) {
+    voxblox::LongIndexSet difference;
+
+    for (auto idx : index_set_a) {
+        if (index_set_b.count(idx) <= 0) {
+            difference.insert(idx);
+        }
+    }
+
+    return difference;
+}
+
 // return union of two unordered hash maps. 
 voxblox::LongIndexSet set_union(const voxblox::LongIndexSet& index_set_a, const voxblox::LongIndexSet& index_set_b) {
     voxblox::LongIndexSet union_elements;

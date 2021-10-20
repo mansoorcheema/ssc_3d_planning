@@ -14,11 +14,13 @@ namespace voxblox {
 class SSCServer {
    public:
     SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private)
-        : SSCServer(nh, nh_private, loadFusionConfigROS(nh, nh_private), SSCMap::Config()) {}
+        : SSCServer(nh, nh_private, getFusionConfigROSParam(nh, nh_private), getSSCMapConfigFromRosParam(nh_private)) {}
 
     SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private, const ssc_fusion::BaseFusion::Config&, const SSCMap::Config&);
 
-    ssc_fusion::BaseFusion::Config loadFusionConfigROS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
+    static ssc_fusion::BaseFusion::Config getFusionConfigROSParam(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
+
+    static SSCMap::Config getSSCMapConfigFromRosParam(const ros::NodeHandle& nh_private);
 
     void sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg);
 

@@ -168,7 +168,7 @@ int main(int argc, char** argv) {
 
         // false positive occupancy observations
         pcl::PointCloud<pcl::PointXYZRGB> pointcloud_observed_occupancy_fp;
-        ssc_mapping::createPointCloudFromVoxelIndices(ssc_mapping::evaluation::set_intersection(map_obs_occ_voxels,gt_free_voxels), &pointcloud_observed_occupancy_fp, voxblox::Color::Yellow());
+        ssc_mapping::createPointCloudFromVoxelIndices(ssc_mapping::evaluation::set_difference(map_obs_occ_voxels,gt_occ_voxels), &pointcloud_observed_occupancy_fp, voxblox::Color::Yellow());
         false_positive_observations_pub.publish(pointcloud_observed_occupancy_fp);
 
         // free voxels in ground truth map
