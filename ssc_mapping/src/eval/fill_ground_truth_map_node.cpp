@@ -37,7 +37,8 @@ int main(int argc, char** argv) {
         // load params from ros
         nh_private.param("input_path", input_path, input_path);
         nh_private.param("save_path", save_path, save_path);
-        nh_private.param("keep_occupancy", keep_occupancy, keep_occupancy);
+        nh_private.param("keep_occupancy", keep_occupancy, keep_occupancy);// keep occupancy means that do not discard the occupied voxels in map. When
+        //set to false, only voxels next to last free voxels are indicated occupied.
     }
 
     voxblox::Layer<voxblox::TsdfVoxel>::Ptr ground_truth_layer, ground_truth_layer_refined;

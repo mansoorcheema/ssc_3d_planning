@@ -33,7 +33,7 @@ class BaseFusion {
         float max_prob = 0.97f;
     };
 
-    virtual void fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence = 0.f) = 0;
+    virtual void fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence = 0.51f) = 0;
 };
 }  // namespace ssc_fusion
 

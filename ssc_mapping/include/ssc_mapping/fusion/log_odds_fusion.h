@@ -1,5 +1,5 @@
-#ifndef SSC_OCCUPANCY_FUSION_H_
-#define SSC_OCCUPANCY_FUSION_H_
+#ifndef SSC_LOG_ODDS_FUSION_H_
+#define SSC_LOG_ODDS_FUSION_H_
 
 #include <voxblox/core/common.h>
 
@@ -7,15 +7,15 @@
 
 namespace ssc_fusion {
 /**
- * Log odds based occupancy fusion using SCFusion like fixed probabilities
- * for free and occupied space. Semantics are fused naively, also
+ * Log odds based occupancy fusion using Network Confidence as aprobabilitis and 
+ *  SCFusion like semantics are fused naively, also
  * like SCFusion.
  */
-class OccupancyFusion : public BaseFusion {
+class LogOddsFusion : public BaseFusion {
    public:
-    OccupancyFusion(const BaseFusion::Config& config);
+    LogOddsFusion(const BaseFusion::Config& config);
 
-    OccupancyFusion(float pred_conf, float max_weight, float prob_occupied, float prob_free, float prob_min, float prob_max);
+    LogOddsFusion(float pred_conf, float max_weight, float prob_min, float prob_max);
 
     virtual void fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence = 0.f) override;
 
@@ -24,9 +24,7 @@ class OccupancyFusion : public BaseFusion {
     float max__log_prob_; // maximum threshold of log probability
     float pred_conf_; // weight for a single semantic prediction - ref: scfusion - uses confidence as weight for a semantic weight
     float max_weight_; // max aggregated label semantic weight
-    float prob_occupied_; // constant probability to fuse occupied voxels
-    float prob_free_;// constant probability to fuse free voxels
 };
 }  // namespace ssc_fusion
 
-#endif  // SSC_OCCUPANCY_FUSION_H_
+#endif  // SSC_LOG_ODDS_FUSION_H_
