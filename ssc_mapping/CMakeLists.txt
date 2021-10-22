@@ -17,6 +17,7 @@ cs_add_library(${PROJECT_NAME}
         src/ros/ssc_server.cpp
         src/fusion/occupancy_fusion.cpp
         src/fusion/log_odds_fusion.cpp
+        src/fusion/counting_fusion.cpp
         )
 
         

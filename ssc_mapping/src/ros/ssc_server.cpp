@@ -5,7 +5,9 @@
 
 #include "ssc_mapping/core/voxel.h"
 #include "ssc_mapping/fusion/naive_fusion.h"
+#include "ssc_mapping/fusion/log_odds_fusion.h"
 #include "ssc_mapping/fusion/occupancy_fusion.h"
+#include "ssc_mapping/fusion/counting_fusion.h"
 #include "ssc_mapping/utils/voxel_utils.h"
 #include "ssc_mapping/visualization/visualization.h"
 
@@ -15,17 +17,21 @@ SSCServer::SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_privat
     : nh_(nh), nh_private_(nh_private), publish_pointclouds_on_update_(false), ssc_topic_("ssc"), world_frame_("odom") {
     ssc_map_.reset(new SSCMap(config));
 
-    if (fusion_config.fusion_strategy == ssc_fusion::strategy::log_odds) {
-        base_fusion_.reset(new ssc_fusion::OccupancyFusion(fusion_config));
-    } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::naive) {
+    if (fusion_config.fusion_strategy == ssc_fusion::strategy::naive) {
         base_fusion_.reset(new ssc_fusion::NaiveFusion());
+    } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::sc_fusion) {
+        base_fusion_.reset(new ssc_fusion::OccupancyFusion(fusion_config));
+    } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::log_odds) {
+        base_fusion_.reset(new ssc_fusion::LogOddsFusion(fusion_config));
+    } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::counting) {
+        base_fusion_.reset(new ssc_fusion::CountingFusion(fusion_config));
     } else {
         LOG(WARNING) << "Wrong Fusion strategy provided. Using default fusion strategy";
         base_fusion_.reset(new ssc_fusion::OccupancyFusion(fusion_config));
     }
 
     // subscribe to SSC from node with 3D CNN 
-    nh.param("ssc_topic", ssc_topic_, ssc_topic_);
+    nh_private_.param("ssc_topic", ssc_topic_, ssc_topic_);
     ssc_map_sub_ = nh_.subscribe(ssc_topic_, 1, &SSCServer::sscCallback, this);
 
     nh_private_.param("publish_pointclouds", publish_pointclouds_on_update_, publish_pointclouds_on_update_);
@@ -128,6 +134,8 @@ void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
             for (size_t z = 0; z < msg->width; z++) {
                 size_t idx = x * msg->width * msg->height + y * msg->width + z;
                 uint predicted_label = msg->data[idx];
+                float free_space_confidence = msg->data[idx] - predicted_label;
+                float occupied_confidence = 1 - free_space_confidence;
 
                 // transform from grid coordinate system to world coordinate system
                 uint32_t world_orient_x = z;  // still uses scale of grid though rotation is in world coords
@@ -155,7 +163,7 @@ void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
                     voxel = &block->getVoxelByVoxelIndex(local_voxel_idx);
                 }
 
-                base_fusion_->fuse(voxel, predicted_label);
+                base_fusion_->fuse(voxel, predicted_label, occupied_confidence);
             }
         }
     }

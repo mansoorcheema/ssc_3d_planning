@@ -14,9 +14,7 @@ class NaiveFusion : public BaseFusion {
             voxel->label_weight = 1.0;
             if (predicted_label > 0) {
                 voxel->probability_log = voxblox::logOddsFromProbability(confidence);
-            } else {
-                voxel->probability_log = voxblox::logOddsFromProbability(1 - confidence);
-            }
+            } 
             voxel->observed = true;
         }
     }

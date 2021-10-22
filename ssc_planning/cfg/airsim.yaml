@@ -62,3 +62,4 @@ processors:
     processor_type: DepthToPointcloud
     depth_camera_name: Depth_cam
     color_camera_name: Scene_cam
+    max_ray_length: 5

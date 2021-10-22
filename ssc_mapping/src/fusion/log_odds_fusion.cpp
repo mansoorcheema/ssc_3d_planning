@@ -31,14 +31,7 @@ void LogOddsFusion::fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label
     // Fuse Occupancy - Network occupancy confidence as log probability
     //==================================================================
     // if voxel is predicted as occupied
-    float log_odds_update = 0;
-    if (predicted_label > 0) {
-        // occupied voxel
-        log_odds_update = voxblox::logOddsFromProbability(confidence);
-    } else {
-        // free voxel
-        log_odds_update = voxblox::logOddsFromProbability(1 - confidence);
-    }
+    float log_odds_update = voxblox::logOddsFromProbability(confidence);
 
     voxel->probability_log =
         std::min(std::max(voxel->probability_log + log_odds_update, min_log_prob_), max__log_prob_);

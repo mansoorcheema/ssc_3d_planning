@@ -6,7 +6,9 @@
 namespace ssc_fusion {
 enum strategy {
     naive = 0,
-    log_odds = 1,
+    sc_fusion = 1,
+    log_odds = 2,
+    counting = 3
 };
 
 class BaseFusion {
