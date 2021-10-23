@@ -8,6 +8,7 @@
 #include "ssc_mapping/fusion/log_odds_fusion.h"
 #include "ssc_mapping/fusion/occupancy_fusion.h"
 #include "ssc_mapping/fusion/counting_fusion.h"
+#include "ssc_mapping/fusion/sc_fusion.h"
 #include "ssc_mapping/utils/voxel_utils.h"
 #include "ssc_mapping/visualization/visualization.h"
 
@@ -19,12 +20,14 @@ SSCServer::SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_privat
 
     if (fusion_config.fusion_strategy == ssc_fusion::strategy::naive) {
         base_fusion_.reset(new ssc_fusion::NaiveFusion());
-    } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::sc_fusion) {
+    } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::occupancy_fusion) {
         base_fusion_.reset(new ssc_fusion::OccupancyFusion(fusion_config));
     } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::log_odds) {
         base_fusion_.reset(new ssc_fusion::LogOddsFusion(fusion_config));
     } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::counting) {
         base_fusion_.reset(new ssc_fusion::CountingFusion(fusion_config));
+    } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::sc_fusion) {
+        base_fusion_.reset(new ssc_fusion::SCFusion(fusion_config));
     } else {
         LOG(WARNING) << "Wrong Fusion strategy provided. Using default fusion strategy";
         base_fusion_.reset(new ssc_fusion::OccupancyFusion(fusion_config));
@@ -32,7 +35,7 @@ SSCServer::SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_privat
 
     // subscribe to SSC from node with 3D CNN 
     nh_private_.param("ssc_topic", ssc_topic_, ssc_topic_);
-    ssc_map_sub_ = nh_.subscribe(ssc_topic_, 1, &SSCServer::sscCallback, this);
+    ssc_map_sub_ = nh_.subscribe(ssc_topic_, 50, &SSCServer::sscCallback, this);
 
     nh_private_.param("publish_pointclouds", publish_pointclouds_on_update_, publish_pointclouds_on_update_);
 

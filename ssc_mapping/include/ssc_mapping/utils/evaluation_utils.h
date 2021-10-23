@@ -36,7 +36,7 @@ int get_voxel_state(
   if (block) {
     const voxblox::TsdfVoxel& voxel = block->getVoxelByVoxelIndex(voxel_idx);
     if (voxel.weight > 1e-6) {
-      if (voxel.distance > layer.voxel_size()) {
+      if (voxel.distance > layer.voxel_size()/2) {
         return 0;
       } else {
         return 1;
@@ -197,19 +197,21 @@ void refine_gt_layer(const voxblox::Layer<voxblox::TsdfVoxel>& gt_layer,
     // add these voxels to refined layer
     for (auto global_voxel_idx : gt_occ_voxels) {
        
-        voxblox::TsdfVoxel* occ_voxel = refined_layer->getVoxelPtrByGlobalIndex(global_voxel_idx);
+        voxblox::TsdfVoxel* refined_occ_voxel = refined_layer->getVoxelPtrByGlobalIndex(global_voxel_idx);
+        const voxblox::TsdfVoxel* gt_voxel = gt_layer.getVoxelPtrByGlobalIndex(global_voxel_idx);
 
         // check if the block containing the voxel exists.
-        if (occ_voxel == nullptr) {
+        if (refined_occ_voxel == nullptr) {
             auto block_idx = voxblox::getBlockIndexFromGlobalVoxelIndex(global_voxel_idx, refined_layer->voxels_per_side_inv());
             auto block = refined_layer->allocateBlockPtrByIndex(block_idx);
             const voxblox::VoxelIndex local_voxel_idx =
                 voxblox::getLocalFromGlobalVoxelIndex(global_voxel_idx, refined_layer->voxels_per_side());
-            occ_voxel = &block->getVoxelByVoxelIndex(local_voxel_idx);
+            refined_occ_voxel = &block->getVoxelByVoxelIndex(local_voxel_idx);
         }
 
-        occ_voxel->weight = 1.0;
-        occ_voxel->distance = 0.0f;
+        // occ_voxel->weight = 1.0;
+        // occ_voxel->distance = 0.0f;
+        *refined_occ_voxel = *gt_voxel;
     }
 
     for (auto global_voxel_idx : gt_free_voxels) {
