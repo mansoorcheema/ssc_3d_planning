@@ -52,6 +52,11 @@ class SSCVoxbloxOccupancyMap : public OccupancyMap {
 
   std::unique_ptr<voxblox::EsdfServer> esdf_server_;
 
+  // use ssc map for planning
+  bool use_ssc_planning_;
+  // whether to use ssc map for information planning
+  bool use_ssc_information_planning_;
+
   // cache constants
   double c_voxel_size_;
   double c_block_size_;

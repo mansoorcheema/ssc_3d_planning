@@ -48,7 +48,10 @@
  </node>
 
   <node name="ssc_node" pkg="ssc_mapping" type="ssc_mapping_node" required="true" args="-alsologtostderr"  output="screen">
-   <param name="fusion_strategy" value="1" />
+   <param name="publish_pointclouds" value="true" />
+   <param name="ssc_voxel_size" value="$(arg voxel_size)" />
+   <param name="ssc_voxels_per_side" value="$(arg voxels_per_side)" />
+   <param name="fusion_strategy" value="2" />
    <param name="fusion_prob_free" value="0.475" />  
    <param name="fusion_prob_occupied" value="0.6775" />  
    <param name="fusion_max_weight" value="30.0" />   
@@ -57,7 +60,7 @@
    <param name="fusion_max_prob" value="0.97" /> 
  </node>
 
- <node name="eval_data_node" pkg="active_3d_planning_app_reconstruction" type="eval_data_node.py" output="screen" required="true">
+ <!-- <node name="eval_data_node" pkg="active_3d_planning_app_reconstruction" type="eval_data_node.py" output="screen" required="true">
       <remap from="ue_out_in" to="/airsim_drone/RGB_pcl" />
       <remap from="collision" to="/airsim_drone/collision" />
       <param name="ns_planner" value="/planner_node" />
@@ -69,8 +72,8 @@
       <param name="eval_directory" value="/Data/simulations/Data" />
       <param name="gt_map_path" value="/home/mansoor/flat_filled_free.tsdf" />
       <param name="eval_frequency" value="30" />
-      <param name="time_limit" value="2" />
-    </node>
+      <param name="time_limit" value="15" />
+    </node> -->
 
   <node name="planner_node" pkg="active_3d_planning_app_reconstruction" type="reconstruction_planner_node" args="-alsologtostderr" output="screen" >
       <remap from="planner_node/esdf_map_in" to="/voxblox_node/esdf_map_out" />

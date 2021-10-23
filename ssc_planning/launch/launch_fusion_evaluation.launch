@@ -5,10 +5,11 @@
   <arg name="ray_length" default="5.0"/>
   <arg name="method" default="merged"/>
   <arg name="verbose_voxblox" default="false"/>
+  <param name="/use_sim_time" value="true"/>
  
   
 <!--     Voxblox -->
- <node name="voxblox_node" pkg="voxblox_ros" type="esdf_server" output="screen" args="-alsologtostderr">
+ <node name="voxblox_node" pkg="voxblox_ros" type="esdf_server"   output="screen" args="-alsologtostderr">
    <remap from="pointcloud" to="/airsim_drone/RGB_pcl"/>
    <param name="use_tf_transforms" value="true"/>
    <param name="publish_tsdf_map" value="true" />
@@ -25,23 +26,23 @@
    <param name="publish_map_incremental" value="true" />
  </node>
 
-  <node name="ssc_node" pkg="ssc_mapping" type="ssc_mapping_node" required="true" args="-alsologtostderr"  output="screen">
+  <node name="ssc_node" pkg="ssc_mapping" type="ssc_mapping_node"  required="true" args="-alsologtostderr"  output="screen">
    <param name="publish_pointclouds" value="true" />
    <param name="ssc_topic" value="ssc" />
    <param name="ssc_voxel_size" value="$(arg voxel_size)" />
    <param name="ssc_voxels_per_side" value="$(arg voxels_per_side)" />
-   <param name="fusion_strategy" value="3" />
+   <param name="fusion_strategy" value="4" />
    <param name="fusion_prob_free" value="0.475" />  
    <param name="fusion_prob_occupied" value="0.6775" />  
    <param name="fusion_max_weight" value="30.0" />   
-   <param name="fusion_pred_conf" value="1.0" />   
+   <param name="fusion_pred_conf" value="0.75" />   
    <param name="fusion_min_prob" value="0.12" />  
    <param name="fusion_max_prob" value="0.97" /> 
  </node>
 
- <node pkg="rosbag" type="play" name="player" output="screen" args="--clock /Data/simulations/Data/subset_ssc_prob.bag"/>
+ <node pkg="rosbag" type="play" name="player" required="true" output="screen" args=" --rate 2 --clock /Data/simulations/Data/subset_ssc_prob.bag"/>
 
- <!-- <node name="eval_data_node" pkg="active_3d_planning_app_reconstruction" type="eval_data_node.py" output="screen" required="true">
+ <node name="eval_data_node" pkg="active_3d_planning_app_reconstruction" type="eval_data_node.py" output="screen" required="true">
       <remap from="ue_out_in" to="/airsim_drone/RGB_pcl" />
       <remap from="collision" to="/airsim_drone/collision" />
       <param name="ns_planner" value="/planner_node" />
@@ -54,7 +55,7 @@
       <param name="gt_map_path" value="/home/mansoor/flat_filled_free.tsdf" />
       <param name="eval_frequency" value="30" />
       <param name="time_limit" value="15" />
-    </node> -->
+    </node>
 
 
   <!-- RVIZ Visualization -->

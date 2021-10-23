@@ -36,6 +36,9 @@ void SSCVoxbloxOccupancyMap::setupFromParamMap(Module::ParamMap* param_map) {
     setParam<float>(param_map, "min_prob", &fusion_config.min_prob, fusion_config.min_prob);
     setParam<float>(param_map, "max_prob", &fusion_config.max_prob, fusion_config.max_prob);
     setParam<int>(param_map, "fusion_strategy", &fusion_config.fusion_strategy, fusion_config.fusion_strategy);
+    setParam<bool>(param_map, "use_ssc_planning", &use_ssc_planning_, false);
+    setParam<bool>(param_map, "use_ssc_information_planning", &use_ssc_information_planning_, true);
+
     // setup ssc server
     ssc_server_.reset(new voxblox::SSCServer(nh, nh_private, fusion_config, map_config));
 
@@ -60,39 +63,43 @@ void SSCVoxbloxOccupancyMap::setupFromParamMap(Module::ParamMap* param_map) {
 }
 
 bool SSCVoxbloxOccupancyMap::isTraversable(const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation) {
-
     double collision_radius = planner_.getSystemConstraints().collision_radius;
 
     // first check from voxblox esdf
     double distance = 0.0;
-    if (esdf_server_->getEsdfMapPtr()->getDistanceAtPosition(position,
-                                                            &distance)) {
+    if (esdf_server_->getEsdfMapPtr()->getDistanceAtPosition(position, &distance)) {
         // This means the voxel is observed
         return (distance > collision_radius);
     }
 
-    // The voxel is not observed by voxblox tsdf map. In this case
-    // check SSC Map
-    Eigen::Vector3d front(position.x() + collision_radius, position.y() , position.z() );
-    Eigen::Vector3d back(position.x() - collision_radius, position.y() , position.z());
+    if (use_ssc_planning_) {
+        // The voxel is not observed by voxblox tsdf map. In this case
+        // check SSC Map
+        Eigen::Vector3d front(position.x() + collision_radius, position.y(), position.z());
+        Eigen::Vector3d back(position.x() - collision_radius, position.y(), position.z());
 
-    Eigen::Vector3d left(position.x(), position.y() + collision_radius,  position.z());
-    Eigen::Vector3d right(position.x(), position.y() - collision_radius,  position.z());
+        Eigen::Vector3d left(position.x(), position.y() + collision_radius, position.z());
+        Eigen::Vector3d right(position.x(), position.y() - collision_radius, position.z());
 
-    Eigen::Vector3d top(position.x(), position.y(), position.z() + collision_radius);
-    Eigen::Vector3d bottom(position.x(), position.y(), position.z() - collision_radius);
+        Eigen::Vector3d top(position.x(), position.y(), position.z() + collision_radius);
+        Eigen::Vector3d bottom(position.x(), position.y(), position.z() - collision_radius);
 
-    if (getVoxelState(top) == OccupancyMap::FREE && getVoxelState(bottom) == OccupancyMap::FREE &&
-        getVoxelState(left) == OccupancyMap::FREE && getVoxelState(right) == OccupancyMap::FREE &&
-        getVoxelState(front) == OccupancyMap::FREE && getVoxelState(back) == OccupancyMap::FREE) {
-        return true;
+        if (getVoxelState(top) == OccupancyMap::FREE && getVoxelState(bottom) == OccupancyMap::FREE &&
+            getVoxelState(left) == OccupancyMap::FREE && getVoxelState(right) == OccupancyMap::FREE &&
+            getVoxelState(front) == OccupancyMap::FREE && getVoxelState(back) == OccupancyMap::FREE) {
+            return true;
+        }
     }
 
     return false;
 }
 
 bool SSCVoxbloxOccupancyMap::isObserved(const Eigen::Vector3d& point) {
-  return esdf_server_->getEsdfMapPtr()->isObserved(point) || ssc_server_->getSSCMapPtr()->isObserved(point);
+    bool observed = esdf_server_->getEsdfMapPtr()->isObserved(point);
+    if (use_ssc_planning_) {
+        observed = observed || ssc_server_->getSSCMapPtr()->isObserved(point);
+    }
+    return observed;
 }
 
 // get occupancy
@@ -106,21 +113,24 @@ unsigned char SSCVoxbloxOccupancyMap::getVoxelState(const Eigen::Vector3d& point
             return OccupancyMap::FREE;
         }
     } else {
-        // voxel is not observed by ESDF Map. See if its observed by SSC Map.
-        auto voxel = ssc_server_->getSSCMapPtr()->getSSCLayerPtr()->getVoxelPtrByCoordinates(
-            point.cast<voxblox::FloatingPoint>());
+        if (use_ssc_information_planning_) {
+            // voxel is not observed by ESDF Map. See if its observed by SSC Map.
+            auto voxel = ssc_server_->getSSCMapPtr()->getSSCLayerPtr()->getVoxelPtrByCoordinates(
+                point.cast<voxblox::FloatingPoint>());
 
-        if (voxel == nullptr) return OccupancyMap::UNKNOWN;
+            if (voxel == nullptr) return OccupancyMap::UNKNOWN;
 
-        if (voxel->observed) {
-            if (voxel->probability_log > voxblox::logOddsFromProbability(0.5f)) {  // log(0.7/0.3) = 0.3679f
-                return OccupancyMap::OCCUPIED;
+            if (voxel->observed) {
+                if (voxel->probability_log > voxblox::logOddsFromProbability(0.5f)) {
+                    return OccupancyMap::OCCUPIED;
+                } else {
+                    return OccupancyMap::FREE;
+                }
             } else {
-                return OccupancyMap::FREE;
+                return OccupancyMap::UNKNOWN;
             }
-        } else {
-            return OccupancyMap::UNKNOWN;
         }
+        return OccupancyMap::UNKNOWN;
     }
 }
 
