@@ -48,7 +48,7 @@ inline SSCOccupancyVoxel Interpolator<SSCOccupancyVoxel>::interpVoxel(const Inte
 // scfusion
 // namespace utils
 template <>
-void mergeVoxelAIntoVoxelB(const SSCOccupancyVoxel& voxel_A, SSCOccupancyVoxel* voxel_B) {
+inline void mergeVoxelAIntoVoxelB(const SSCOccupancyVoxel& voxel_A, SSCOccupancyVoxel* voxel_B) {
     voxel_B->label = voxel_A.label;
     voxel_B->label_weight = voxel_A.label_weight;
     voxel_B->observed = voxel_A.observed;
@@ -107,11 +107,11 @@ inline void Block<SSCOccupancyVoxel>::deserializeFromIntegers(
 
 namespace utils {
 template <>
-bool isObservedVoxel(const SSCOccupancyVoxel& voxel) {
+inline bool isObservedVoxel(const SSCOccupancyVoxel& voxel) {
     return voxel.observed;
 }
 
-bool isOccupied(const voxblox::TsdfVoxel& voxel, float voxel_size) {
+inline bool isOccupied(const voxblox::TsdfVoxel& voxel, float voxel_size) {
     constexpr float kMinWeight = 1e-3;
     if (voxel.weight > kMinWeight && voxel.distance <= voxel_size) {
         return true;
@@ -119,17 +119,33 @@ bool isOccupied(const voxblox::TsdfVoxel& voxel, float voxel_size) {
     return false;
 }
 
-bool isOccupied(const voxblox::SSCOccupancyVoxel& voxel, float voxel_size) {
+inline bool isOccupied(const voxblox::SSCOccupancyVoxel& voxel, float voxel_size) {
     voxblox::Color color;
     return voxblox::visualizeSSCOccupancyVoxels(voxel, voxblox::Point(), &color);
 }
 
-void setUnOccupied(voxblox::SSCOccupancyVoxel* voxel) {
+inline void setUnOccupied(voxblox::SSCOccupancyVoxel* voxel) {
     voxel->observed = false;
 }
 
-void setUnOccupied(voxblox::TsdfVoxel* voxel) {
+inline void setUnOccupied(voxblox::TsdfVoxel* voxel) {
     voxel->weight = 0;
+}
+
+// get all the voxels at the radius from point within voxel size
+inline void getSurroundingVoxelsSphere(const Eigen::Vector3d& point, double voxel_size, double radius,
+                          std::vector<Eigen::Vector3d>* points) {
+    for (float x = -radius; x <= radius; x += voxel_size) {
+        for (float y = -radius; y <= radius; y += voxel_size) {
+            for (float z = -radius; z <= radius; z += voxel_size) {
+                Eigen::Vector3d offset(x, y, z);
+                if (offset.norm() >= (radius - voxel_size) && offset.norm() <= (radius + voxel_size)) {
+                    auto target_point = point + offset;
+                    points->emplace_back(target_point);
+                }
+            }
+        }
+    }
 }
 
 }  // namespace utils

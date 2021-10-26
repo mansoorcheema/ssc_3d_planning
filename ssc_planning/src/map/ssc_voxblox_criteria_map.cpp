@@ -79,20 +79,16 @@ bool SSCVoxbloxCriteriaMap::isTraversable(const Eigen::Vector3d& position, const
 
     if (ssc_utilization_criteria_->criteriaVerify(*ssc_server_->getSSCMapPtr(), position)) {
         // The criteria to use ssc map is met. 
-        Eigen::Vector3d front(position.x() + collision_radius, position.y(), position.z());
-        Eigen::Vector3d back(position.x() - collision_radius, position.y(), position.z());
+        std::vector<Eigen::Vector3d> neighbouring_points;
+        voxblox::utils::getSurroundingVoxelsSphere(position, c_voxel_size_, collision_radius, &neighbouring_points);
 
-        Eigen::Vector3d left(position.x(), position.y() + collision_radius, position.z());
-        Eigen::Vector3d right(position.x(), position.y() - collision_radius, position.z());
-
-        Eigen::Vector3d top(position.x(), position.y(), position.z() + collision_radius);
-        Eigen::Vector3d bottom(position.x(), position.y(), position.z() - collision_radius);
-
-        if (getVoxelState(top) == OccupancyMap::FREE && getVoxelState(bottom) == OccupancyMap::FREE &&
-            getVoxelState(left) == OccupancyMap::FREE && getVoxelState(right) == OccupancyMap::FREE &&
-            getVoxelState(front) == OccupancyMap::FREE && getVoxelState(back) == OccupancyMap::FREE) {
-            return true;
+        for(auto point: neighbouring_points) {
+            if(getVoxelState(point) == OccupancyMap::OCCUPIED) {
+                return false;
+            }
         }
+        return true;
+        
     } else {
         // the criteria to use ssc map is not met. Using measured map instead
         double distance = 0.0;

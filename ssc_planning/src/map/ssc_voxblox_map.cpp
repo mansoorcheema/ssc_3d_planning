@@ -79,20 +79,16 @@ bool SSCVoxbloxOccupancyMap::isTraversable(const Eigen::Vector3d& position, cons
     if (use_ssc_planning_) {
         // The voxel is not observed by voxblox tsdf map. In this case
         // check SSC Map
-        Eigen::Vector3d front(position.x() + collision_radius, position.y(), position.z());
-        Eigen::Vector3d back(position.x() - collision_radius, position.y(), position.z());
+        // The criteria to use ssc map is met.
+        std::vector<Eigen::Vector3d> neighbouring_points;
+        voxblox::utils::getSurroundingVoxelsSphere(position, c_voxel_size_, collision_radius, &neighbouring_points);
 
-        Eigen::Vector3d left(position.x(), position.y() + collision_radius, position.z());
-        Eigen::Vector3d right(position.x(), position.y() - collision_radius, position.z());
-
-        Eigen::Vector3d top(position.x(), position.y(), position.z() + collision_radius);
-        Eigen::Vector3d bottom(position.x(), position.y(), position.z() - collision_radius);
-
-        if (getVoxelState(top) == OccupancyMap::FREE && getVoxelState(bottom) == OccupancyMap::FREE &&
-            getVoxelState(left) == OccupancyMap::FREE && getVoxelState(right) == OccupancyMap::FREE &&
-            getVoxelState(front) == OccupancyMap::FREE && getVoxelState(back) == OccupancyMap::FREE) {
-            return true;
+        for (auto point : neighbouring_points) {
+            if (getVoxelState(point) == OccupancyMap::OCCUPIED) {
+                return false;
+            }
         }
+        return true;
     }
 
     return false;

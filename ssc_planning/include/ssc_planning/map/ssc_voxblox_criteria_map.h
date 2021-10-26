@@ -5,6 +5,7 @@
 
 #include <active_3d_planning_core/module/module_factory_registry.h>
 #include <ssc_mapping/ros/ssc_server.h>
+#include <ssc_mapping/utils/voxel_utils.h>
 #include <voxblox_ros/esdf_server.h>
 #include <active_3d_planning_core/map/occupancy_map.h>
 
