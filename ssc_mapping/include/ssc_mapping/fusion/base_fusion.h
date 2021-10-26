@@ -4,13 +4,21 @@
 #include "ssc_mapping/core/voxel.h"
 
 namespace ssc_fusion {
-enum strategy {
-    naive = 0,
-    occupancy_fusion = 1,
-    log_odds = 2,
-    counting = 3,
-    sc_fusion = 4
-};
+// enum strategy {
+//     naive = 0,
+//     occupancy_fusion = 1,
+//     log_odds = 2,
+//     counting = 3,
+//     sc_fusion = 4
+// };
+
+namespace strategy {
+const std::string naive = "naive";
+const std::string occupancy_fusion = "occupancy_fusion";
+const std::string log_odds = "log_odds";
+const std::string counting = "counting";
+const std::string sc_fusion = "sc_fusion";
+}  // namespace strategy
 
 class BaseFusion {
    public:
@@ -29,7 +37,7 @@ class BaseFusion {
         float prob_free = 0.45f;
 
         // fusion strategy to fuse new measurements into a voxel
-        int fusion_strategy = strategy::log_odds;
+        std::string fusion_strategy = strategy::log_odds;
 
         float min_prob = 0.12f;
 

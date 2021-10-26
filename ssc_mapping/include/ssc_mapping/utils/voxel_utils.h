@@ -113,7 +113,7 @@ bool isObservedVoxel(const SSCOccupancyVoxel& voxel) {
 
 bool isOccupied(const voxblox::TsdfVoxel& voxel, float voxel_size) {
     constexpr float kMinWeight = 1e-3;
-    if (voxel.weight > kMinWeight && voxel.distance < voxel_size/2) {
+    if (voxel.weight > kMinWeight && voxel.distance <= voxel_size) {
         return true;
     }
     return false;

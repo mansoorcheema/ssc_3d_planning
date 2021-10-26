@@ -18,15 +18,15 @@ SSCServer::SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_privat
     : nh_(nh), nh_private_(nh_private), publish_pointclouds_on_update_(false), ssc_topic_("ssc"), world_frame_("odom") {
     ssc_map_.reset(new SSCMap(config));
 
-    if (fusion_config.fusion_strategy == ssc_fusion::strategy::naive) {
+    if (fusion_config.fusion_strategy.compare(ssc_fusion::strategy::naive) == 0) {
         base_fusion_.reset(new ssc_fusion::NaiveFusion());
-    } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::occupancy_fusion) {
+    } else if (fusion_config.fusion_strategy.compare(ssc_fusion::strategy::occupancy_fusion) == 0) {
         base_fusion_.reset(new ssc_fusion::OccupancyFusion(fusion_config));
-    } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::log_odds) {
+    } else if (fusion_config.fusion_strategy.compare(ssc_fusion::strategy::log_odds) == 0) {
         base_fusion_.reset(new ssc_fusion::LogOddsFusion(fusion_config));
-    } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::counting) {
+    } else if (fusion_config.fusion_strategy.compare(ssc_fusion::strategy::counting) == 0) {
         base_fusion_.reset(new ssc_fusion::CountingFusion(fusion_config));
-    } else if (fusion_config.fusion_strategy == ssc_fusion::strategy::sc_fusion) {
+    } else if (fusion_config.fusion_strategy.compare(ssc_fusion::strategy::sc_fusion) == 0) {
         base_fusion_.reset(new ssc_fusion::SCFusion(fusion_config));
     } else {
         LOG(WARNING) << "Wrong Fusion strategy provided. Using default fusion strategy";

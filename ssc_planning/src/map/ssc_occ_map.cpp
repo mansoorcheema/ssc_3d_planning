@@ -32,7 +32,7 @@ void SSCOccupancyMap::setupFromParamMap(Module::ParamMap* param_map) {
   setParam<float>(param_map, "prob_free", &fusion_config.prob_free, fusion_config.prob_free);
   setParam<float>(param_map, "min_prob", &fusion_config.min_prob, fusion_config.min_prob);
   setParam<float>(param_map, "max_prob", &fusion_config.max_prob, fusion_config.max_prob);
-  setParam<int>(param_map, "fusion_strategy", &fusion_config.fusion_strategy, fusion_config.fusion_strategy);
+  setParam<std::string>(param_map, "fusion_strategy", &fusion_config.fusion_strategy, fusion_config.fusion_strategy);
   ssc_server_.reset(new voxblox::SSCServer(nh, nh_private, fusion_config, map_config));
 
   // cache constants

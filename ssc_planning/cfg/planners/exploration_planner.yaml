@@ -24,6 +24,9 @@ highlight_executed_trajectory: true
 #   min_prob: 0.12
 #   max_prob: 0.97
 #   use_ssc_planning: false
+#   use_ssc_information_planning: true
+#   use_voxblox_information_planning: true
+#   use_voxblox_planning: true
 
 map:
   type: "VoxbloxMap"

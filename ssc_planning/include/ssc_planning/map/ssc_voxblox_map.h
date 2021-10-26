@@ -54,8 +54,15 @@ class SSCVoxbloxOccupancyMap : public OccupancyMap {
 
   // use ssc map for planning
   bool use_ssc_planning_;
+
+  // use measured voxblox measured map for planning
+  bool use_voxblox_planning_;
+
   // whether to use ssc map for information planning
   bool use_ssc_information_planning_;
+
+  // use measured voxblox measured map for information planning
+  bool use_voxblox_information_planning_;
 
   // cache constants
   double c_voxel_size_;

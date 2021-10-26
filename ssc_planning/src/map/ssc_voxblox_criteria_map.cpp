@@ -1,4 +1,4 @@
-#include "ssc_planning/map/ssc_voxblox_map.h"
+#include "ssc_planning/map/ssc_voxblox_criteria_map.h"
 
 #include <voxblox/core/common.h>
 #include <voxblox_ros/ros_params.h>
@@ -7,23 +7,27 @@
 namespace active_3d_planning {
 namespace map {
 
-ModuleFactoryRegistry::Registration<SSCVoxbloxOccupancyMap> SSCVoxbloxOccupancyMap::registration(
-    "SSCVoxbloxOccupancyMap");
+ModuleFactoryRegistry::Registration<SSCVoxbloxCriteriaMap> SSCVoxbloxCriteriaMap::registration(
+    "SSCVoxbloxCriteriaMap");
 
-SSCVoxbloxOccupancyMap::SSCVoxbloxOccupancyMap(PlannerI& planner) : OccupancyMap(planner) {}
+SSCVoxbloxCriteriaMap::SSCVoxbloxCriteriaMap(PlannerI& planner) : OccupancyMap(planner) {}
 
-voxblox::SSCServer& SSCVoxbloxOccupancyMap::getSSCServer() { return *ssc_server_; }
+voxblox::SSCServer& SSCVoxbloxCriteriaMap::getSSCServer() { return *ssc_server_; }
 
 
-voxblox::EsdfServer& SSCVoxbloxOccupancyMap::getESDFServer() { return *esdf_server_; }
+voxblox::EsdfServer& SSCVoxbloxCriteriaMap::getESDFServer() { return *esdf_server_; }
 
-void SSCVoxbloxOccupancyMap::setupFromParamMap(Module::ParamMap* param_map) {
+void SSCVoxbloxCriteriaMap::setupFromParamMap(Module::ParamMap* param_map) {
     // create an esdf server
     ros::NodeHandle nh("");
     ros::NodeHandle nh_private("~");
 
     voxblox::SSCMap::Config map_config;
     ssc_fusion::BaseFusion::Config fusion_config;
+    
+    // ssc criteria params
+    std::string ssc_criteria("confidence");
+    float ssc_criteria_threshold = 0.92f;
 
     // load ssc map config
     setParam<float>(param_map, "voxel_size", &map_config.ssc_voxel_size, map_config.ssc_voxel_size);
@@ -36,10 +40,8 @@ void SSCVoxbloxOccupancyMap::setupFromParamMap(Module::ParamMap* param_map) {
     setParam<float>(param_map, "min_prob", &fusion_config.min_prob, fusion_config.min_prob);
     setParam<float>(param_map, "max_prob", &fusion_config.max_prob, fusion_config.max_prob);
     setParam<std::string>(param_map, "fusion_strategy", &fusion_config.fusion_strategy, fusion_config.fusion_strategy);
-    setParam<bool>(param_map, "use_ssc_planning", &use_ssc_planning_, false);
-    setParam<bool>(param_map, "use_ssc_information_planning", &use_ssc_information_planning_, true);
-    setParam<bool>(param_map, "use_voxblox_planning", &use_voxblox_planning_, true);
-    setParam<bool>(param_map, "use_voxblox_information_planning", &use_voxblox_information_planning_, true);
+    setParam<std::string>(param_map, "ssc_criteria", &ssc_criteria, ssc_criteria);
+    setParam<float>(param_map, "criteria_threshold", &ssc_criteria_threshold, ssc_criteria_threshold);
 
     // setup ssc server
     ssc_server_.reset(new voxblox::SSCServer(nh, nh_private, fusion_config, map_config));
@@ -59,26 +61,24 @@ void SSCVoxbloxOccupancyMap::setupFromParamMap(Module::ParamMap* param_map) {
                                                tsdf_integrator_config, mesh_config));
     esdf_server_->setTraversabilityRadius(planner_.getSystemConstraints().collision_radius);
 
+    //setup criteria for ssc
+    if (ssc_criteria.compare(ssc_utilization_criterias::confidence) == 0) {
+        ssc_utilization_criteria_.reset(new ConfidenceCriteria(ssc_criteria_threshold));
+    } else {
+        LOG(WARNING) << "Wrong Criteria provided. Using default confidence criteria";
+        ssc_utilization_criteria_.reset(new ConfidenceCriteria(ssc_criteria_threshold));
+    }
+
     // cache constants
     c_voxel_size_ = ssc_server_->getSSCMapPtr()->voxel_size();
     c_block_size_ = ssc_server_->getSSCMapPtr()->block_size();
 }
 
-bool SSCVoxbloxOccupancyMap::isTraversable(const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation) {
+bool SSCVoxbloxCriteriaMap::isTraversable(const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation) {
     double collision_radius = planner_.getSystemConstraints().collision_radius;
 
-    if (use_voxblox_planning_) {
-        // first check from voxblox esdf
-        double distance = 0.0;
-        if (esdf_server_->getEsdfMapPtr()->getDistanceAtPosition(position, &distance)) {
-            // This means the voxel is observed
-            return (distance > collision_radius);
-        }
-    }
-
-    if (use_ssc_planning_) {
-        // The voxel is not observed by voxblox tsdf map. In this case
-        // check SSC Map
+    if (ssc_utilization_criteria_->criteriaVerify(*ssc_server_->getSSCMapPtr(), position)) {
+        // The criteria to use ssc map is met. 
         Eigen::Vector3d front(position.x() + collision_radius, position.y(), position.z());
         Eigen::Vector3d back(position.x() - collision_radius, position.y(), position.z());
 
@@ -93,26 +93,36 @@ bool SSCVoxbloxOccupancyMap::isTraversable(const Eigen::Vector3d& position, cons
             getVoxelState(front) == OccupancyMap::FREE && getVoxelState(back) == OccupancyMap::FREE) {
             return true;
         }
+    } else {
+        // the criteria to use ssc map is not met. Using measured map instead
+        double distance = 0.0;
+        if (esdf_server_->getEsdfMapPtr()->getDistanceAtPosition(position, &distance)) {
+            // This means the voxel is observed
+            return (distance > collision_radius);
+        }
     }
 
     return false;
 }
 
-bool SSCVoxbloxOccupancyMap::isObserved(const Eigen::Vector3d& point) {
+bool SSCVoxbloxCriteriaMap::isObserved(const Eigen::Vector3d& point) {
     bool observed = false;
-    if (use_voxblox_planning_) {
+
+    if (ssc_utilization_criteria_->criteriaVerify(*ssc_server_->getSSCMapPtr(), point)) {
+        observed = ssc_server_->getSSCMapPtr()->isObserved(point);
+    } else {
         observed = esdf_server_->getEsdfMapPtr()->isObserved(point);
-    }
-    if (use_ssc_planning_) {
-        observed = observed || ssc_server_->getSSCMapPtr()->isObserved(point);
     }
     return observed;
 }
 
 // get occupancy
-unsigned char SSCVoxbloxOccupancyMap::getVoxelState(const Eigen::Vector3d& point) {
-    double distance = 0.0;
-    if (use_voxblox_information_planning_) {
+unsigned char SSCVoxbloxCriteriaMap::getVoxelState(const Eigen::Vector3d& point) {
+    
+    if (ssc_utilization_criteria_->criteriaVerify(*ssc_server_->getSSCMapPtr(), point)) {
+        return OccupancyMap::OCCUPIED;
+    } else {
+        double distance = 0.0;
         if (esdf_server_->getEsdfMapPtr()->getDistanceAtPosition(point, &distance)) {
             // This means the voxel is observed by ESDF Map
             if (distance < c_voxel_size_) {
@@ -122,32 +132,14 @@ unsigned char SSCVoxbloxOccupancyMap::getVoxelState(const Eigen::Vector3d& point
             }
         }
     }
-
-    if (use_ssc_information_planning_) {
-        // voxel is not observed by ESDF Map. See if its observed by SSC Map.
-        auto voxel = ssc_server_->getSSCMapPtr()->getSSCLayerPtr()->getVoxelPtrByCoordinates(
-            point.cast<voxblox::FloatingPoint>());
-
-        if (voxel == nullptr) return OccupancyMap::UNKNOWN;
-
-        if (voxel->observed) {
-            if (voxel->probability_log > voxblox::logOddsFromProbability(0.5f)) {
-                return OccupancyMap::OCCUPIED;
-            } else {
-                return OccupancyMap::FREE;
-            }
-        } else {
-            return OccupancyMap::UNKNOWN;
-        }
-    }
     return OccupancyMap::UNKNOWN;
 }
 
 // get voxel size
-double SSCVoxbloxOccupancyMap::getVoxelSize() { return c_voxel_size_; }
+double SSCVoxbloxCriteriaMap::getVoxelSize() { return c_voxel_size_; }
 
 // get the center of a voxel from input point
-bool SSCVoxbloxOccupancyMap::getVoxelCenter(Eigen::Vector3d* center,
+bool SSCVoxbloxCriteriaMap::getVoxelCenter(Eigen::Vector3d* center,
                                 const Eigen::Vector3d& point) {
   voxblox::BlockIndex block_id = ssc_server_->getSSCMapPtr()
                                      ->getSSCLayerPtr()
@@ -162,6 +154,17 @@ bool SSCVoxbloxOccupancyMap::getVoxelCenter(Eigen::Vector3d* center,
   *center += voxblox::getCenterPointFromGridIndex(voxel_id, c_voxel_size_)
                  .cast<double>();
   return true;
+}
+
+// criteria functions
+bool ConfidenceCriteria::criteriaVerify(const voxblox::SSCMap & ssc_map, const Eigen::Vector3d& position) {
+   // Get the block.
+    auto block_ptr = ssc_map.getSSCLayer().getBlockPtrByCoordinates(position.cast<float>());
+    if (block_ptr) {
+        const auto& voxel = block_ptr->getVoxelByCoordinates(position.cast<float>());
+        return voxel.probability_log > voxblox::logOddsFromProbability(confidence_threshold_);
+    }
+    return false;
 }
 
 }  // namespace map

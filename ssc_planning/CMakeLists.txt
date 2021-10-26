@@ -15,6 +15,7 @@ cs_add_library(${PROJECT_NAME}
         src/initialization/ssc_package.cpp
         src/map/ssc_occ_map.cpp
         src/map/ssc_voxblox_map.cpp
+        src/map/ssc_voxblox_criteria_map.cpp
 )
 
         

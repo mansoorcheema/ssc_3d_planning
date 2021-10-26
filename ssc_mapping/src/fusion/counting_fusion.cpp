@@ -13,6 +13,8 @@ CountingFusion::CountingFusion(const BaseFusion::Config& config)
 
 void CountingFusion::fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence) {
     voxel->observed = true;
+    // Note: is contrast to log odds, scfusion now counting is also used
+    // for class 0 for this counting based fusion strategy
     if (predicted_label == voxel->label) {
         voxel->label_weight = std::min(voxel->label_weight + pred_conf_, max_weight_);
     } else if (voxel->label_weight < pred_conf_) {
@@ -22,6 +24,9 @@ void CountingFusion::fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_labe
         voxel->label_weight = voxel->label_weight - pred_conf_;
     }
 
+    // The count for class 0 is done along with the labels in
+    // above statements. THis statement marks the voxel as occupied if the count
+    // for empty is less than an any occupied category
     voxel->probability_log = voxel->label > 0 ? log_prob_occupied_ : log_prob_free_;
 }
 
