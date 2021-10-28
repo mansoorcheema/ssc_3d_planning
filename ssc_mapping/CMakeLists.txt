@@ -38,11 +38,17 @@ cs_add_executable(fill_ground_truth_map_node
         src/eval/fill_ground_truth_map_node.cpp
 )
 
+cs_add_executable(merge_measured_predicted_layers_node
+        src/eval/merge_layers.cpp
+)
+
+
 
 target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME} ${catkin_LIBRARIES} )
 target_link_libraries(ssc_map_eval_node ${PROJECT_NAME} ${catkin_LIBRARIES} )
 target_link_libraries(ssc_map_eval_test_node ${PROJECT_NAME} ${catkin_LIBRARIES} )
 target_link_libraries(fill_ground_truth_map_node ${PROJECT_NAME} ${catkin_LIBRARIES} )
+target_link_libraries(merge_measured_predicted_layers_node ${PROJECT_NAME} ${catkin_LIBRARIES} )
 
 cs_install()
 cs_export()

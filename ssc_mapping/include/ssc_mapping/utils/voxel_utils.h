@@ -124,6 +124,8 @@ inline bool isOccupied(const voxblox::SSCOccupancyVoxel& voxel, float voxel_size
     return voxblox::visualizeSSCOccupancyVoxels(voxel, voxblox::Point(), &color);
 }
 
+// Note: should be changed to setUnObserved.
+// avoiding to break changes.
 inline void setUnOccupied(voxblox::SSCOccupancyVoxel* voxel) {
     voxel->observed = false;
 }
