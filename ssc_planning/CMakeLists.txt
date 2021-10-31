@@ -16,6 +16,7 @@ cs_add_library(${PROJECT_NAME}
         src/map/ssc_occ_map.cpp
         src/map/ssc_voxblox_map.cpp
         src/map/ssc_voxblox_criteria_map.cpp
+        src/trajectory_evaluator/ssc_voxel_evaluator.cpp
 )
 
         

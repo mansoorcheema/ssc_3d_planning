@@ -40,6 +40,9 @@ class SSCVoxbloxOccupancyMap : public OccupancyMap {
   bool getVoxelCenter(Eigen::Vector3d* center,
                       const Eigen::Vector3d& point) override;
 
+  // get the voxel occupancy probability in LogOdds
+  double getVoxelLogProb(const Eigen::Vector3d& point);
+
   // accessor to the servers for specialized planners
   voxblox::SSCServer& getSSCServer();
 

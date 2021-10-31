@@ -33,6 +33,10 @@ VoxelEvalData get_voxel_data_from_layer(std::shared_ptr<voxblox::Layer<VoxelType
             gt_obs_occ,    gt_obs_free,    gt_unobs_occ,       gt_unobs_free};
 }
 
+std::string get_base_file_name(std::string path) {
+    return path.substr(path.find_last_of("/\\") + 1, path.find_last_of(".") - path.find_last_of("/\\") - 1);
+}
+
 int main(int argc, char** argv) {
     
     if (argc < 7) {
@@ -106,8 +110,9 @@ int main(int argc, char** argv) {
         if (file.is_open()) {
             file << quality_metrics.precision_occ << "," << quality_metrics.precision_free << ","
                  << quality_metrics.precision_overall << "," << quality_metrics.recall_occ << ","
-                 << quality_metrics.recall_free << "," << quality_metrics.IoU_occ << "," << quality_metrics.IoU_free
-                 << std::endl;
+                 << quality_metrics.recall_free << "," << quality_metrics.IoU_occ << ","
+                 << quality_metrics.IoU_free  << "," 
+                 << get_base_file_name(observed_layer_path) << std::endl;
             file.close();
         }
 
@@ -123,7 +128,8 @@ int main(int argc, char** argv) {
         if (file.is_open()) {
             file << coverage_metrics.explored_occ << "," << coverage_metrics.explored_free << ","
                  << coverage_metrics.explored_overall << "," << coverage_metrics.coverage_occ << ","
-                 << coverage_metrics.coverage_free << "," << coverage_metrics.coverage_overall << std::endl;
+                 << coverage_metrics.coverage_free << "," << coverage_metrics.coverage_overall << ","
+                 << get_base_file_name(observed_layer_path) << std::endl;
             file.close();
         }
 

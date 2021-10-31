@@ -105,6 +105,19 @@ bool SSCVoxbloxOccupancyMap::isObserved(const Eigen::Vector3d& point) {
     return observed;
 }
 
+double SSCVoxbloxOccupancyMap::getVoxelLogProb(const Eigen::Vector3d& point) {
+    voxblox::Point voxblox_point(point.x(), point.y(), point.z());
+    voxblox::Block<voxblox::SSCOccupancyVoxel>::Ptr block =
+        ssc_server_->getSSCMapPtr()->getSSCLayerPtr()->getBlockPtrByCoordinates(voxblox_point);
+    if (block) {
+        voxblox::SSCOccupancyVoxel* ssc_voxel = block->getVoxelPtrByCoordinates(voxblox_point);
+        if (ssc_voxel) {
+            return ssc_voxel->probability_log;
+        }
+    }
+    return 0.0;
+}
+
 // get occupancy
 unsigned char SSCVoxbloxOccupancyMap::getVoxelState(const Eigen::Vector3d& point) {
     double distance = 0.0;
