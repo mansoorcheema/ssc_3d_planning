@@ -15,4 +15,6 @@
     <depend>voxblox</depend>
     <depend>ssc_mapping</depend>
     <depend>active_3d_planning_core</depend>
+    <depend>active_3d_planning_ros</depend>
+    <depend>active_3d_planning_voxblox</depend>
 </package>

@@ -17,15 +17,14 @@ from std_srvs.srv import SetBool
 from voxblox_msgs.srv import FilePath
 
 #plot
-import eval_plots 
+#import eval_plots 
 
 
 class EvalData(object):
     def __init__(self):
         '''  Initialize ros node and read params '''
         # Parse parameters
-        self.ns_planner = rospy.get_param('~ns_planner',
-                                          "/firefly/planner_node")
+        self.ns_planner = rospy.get_param('~ns_planner', "/planner_node")
         self.planner_delay = rospy.get_param(
             '~delay', 0.0)  # Waiting time until the planner is launched
         self.evaluate = rospy.get_param(
@@ -38,10 +37,6 @@ class EvalData(object):
         self.time_limit = rospy.get_param(
             '~time_limit', 0.0)  # Maximum sim duration in minutes, 0 for inf
         self.gt_map_path = rospy.get_param('~gt_map_path', '/home/mansoor/flat.tsdf')
-        # self.reset_unreal_cv_ros = rospy.get_param(
-        #     '~reset_unreal_cv_ros', True)  # On shutdown reset pose to 0
-        # self.ns_unreal_cv_ros = rospy.get_param('~ns_unreal_cv_ros',
-        #                                         "/unreal/unreal_ros_client")
 
         self.start_planner_service = rospy.get_param('~start_planner', True)
 
@@ -81,17 +76,6 @@ class EvalData(object):
             os.makedirs(os.path.join(self.eval_directory, "ssc_maps", "maps"))
             os.makedirs(os.path.join(self.eval_directory, "ssc_maps", "metrics"))
             
-            # self.eval_data_file = open(
-            #     os.path.join(self.eval_directory, "voxblox_data.csv"), 'w')
-            # self.eval_writer = csv.writer(self.eval_data_file,
-            #                               delimiter=',',
-            #                               quotechar='|',
-            #                               quoting=csv.QUOTE_MINIMAL,
-            #                               lineterminator='\n')
-            # self.eval_writer.writerow(
-            #     ['MapName', 'RosTime', 'WallTime', 'NPointclouds', 'CPUTime'])
-            # self.eval_writer.writerow(
-            #     ['Unit', 'seconds', 'seconds', '-', 'seconds'])
             self.eval_log_file = open(
                 os.path.join(self.eval_directory, "data_log.txt"), 'a')
 
@@ -182,16 +166,7 @@ class EvalData(object):
             time_real = time.time() - self.eval_walltime_0
             time_ros = rospy.get_time() - self.eval_rostime_0
             map_name = "{0:05d}".format(self.eval_n_maps)
-            # try:
-            #     cpu = self.cpu_time_srv(True)
-            # except:
-            #     # Usually this means the planner died
-            #     self.stop_experiment("Planner Node died (cpu srv failed).")
-            #     return
-            # self.eval_writer.writerow([
-            #     map_name, time_ros, time_real, self.eval_n_pointclouds,
-            #     float(cpu.message)
-            # ])
+
             self.eval_voxblox_service(
                 os.path.join(self.eval_directory, "voxblox_maps", "maps",
                              map_name + ".tsdf"))
@@ -244,13 +219,6 @@ class EvalData(object):
         rospy.loginfo("\n" + "*" * width + "\n* " + reason + " *\n" +
                       "*" * width)
         
-        # save plots
-        # try:
-        #     eval_plots.evaluate(os.path.join(self.eval_directory,"voxblox_maps"), self.gt_map_path,"tsdf")
-        #     eval_plots.evaluate(os.path.join(self.eval_directory,"ssc_maps"), self.gt_map_path,"ssc")
-            
-        # except:
-        #     print("Evaluation plotting failed!")
         rospy.signal_shutdown(reason)
 
     def collision_callback(self, _):

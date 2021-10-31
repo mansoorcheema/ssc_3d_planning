@@ -7,11 +7,14 @@ import matplotlib.pyplot as plt
 import math
 import argparse
 import sys
+import pandas
 from pathlib import Path
+import seaborn as sns
 
 def create_figure_object(title, num_plots, width=16, height=10):
     cols = 3
     rows = math.ceil(num_plots/cols)
+    
     fig, axs = plt.subplots(rows, cols)
     fig.set_figheight(height)
     fig.set_figwidth(width)
@@ -95,11 +98,12 @@ def evaluate(dirs, gt_path, map_type):
 # plots the emtrics to given axs subplots.
 def plot_metrics(data, axs, label=""):
     headers = list(data.keys())
-    for i, ax in enumerate(axs.flat):
-        if i < len(headers):
+    for i, ax in enumerate(axs.flat):#ignore id column
+        if i < len(headers)-1:
             ax.set_ylim([0, 1])
             ax.set_title(headers[i])
-            ax.plot((np.arange(len(data[headers[i]])) * 30) / 60 , data[headers[i]], label=label)
+            #ax.plot((np.arange(len(data[headers[i]])) * 30) / 60 , data[headers[i]], label=label)
+            sns.lineplot(x=np.asarray(data[headers[-1]]) * 0.5, y=data[headers[i]], ci="sd", label=label, ax=ax)
             ax.set(xlabel='Time in Minutes')
             ax.legend()
     
@@ -109,10 +113,10 @@ def save_metrics_csv(eval_quality_csv_file, eval_coverage_csv_file, map_files, g
 
     # create log file
     with open(eval_quality_csv_file, 'w') as f:
-        f.write("precision_occ,precision_free,precision_overall,recall_occ,recall_free,IoU_occ,IoU_free\n");
+        f.write("precision_occ,precision_free,precision_overall,recall_occ,recall_free,IoU_occ,IoU_free,time_segment_id\n");
     
     with open(eval_coverage_csv_file, 'w') as f:
-        f.write("explored_occ,explored_free,explored_overall,coverage_occ,coverage_free,coverage_overall\n");
+        f.write("explored_occ,explored_free,explored_overall,coverage_occ,coverage_free,coverage_overall,time_segment_id\n");
         
     for voxblox_map in map_files:
        print(voxblox_map)
@@ -120,6 +124,12 @@ def save_metrics_csv(eval_quality_csv_file, eval_coverage_csv_file, map_files, g
     # run evaluation
     for voxblox_map in map_files:
         subprocess.run(['rosrun', 'ssc_mapping', 'ssc_map_eval_node', gt_path, voxblox_map, eval_quality_csv_file, eval_coverage_csv_file, "0", "1"])
+
+
+def save_mean_csv(csv_file, column="time_segment_id"):
+    df = pandas.read_csv(csv_file)
+    df_mean = df.groupby(column).mean()
+    df_mean.to_csv(csv_file)
 
 def evaluate_comp(data_folder, gt_path=None, map_type=None):
     quality_metrics_fig, quality_metrics_axs = create_figure_object("Quality Metrics {}".format(map_type.upper()), 7)
@@ -136,7 +146,7 @@ def evaluate_comp(data_folder, gt_path=None, map_type=None):
         if not os.path.isdir(curr_data_dir):
             continue
 
-        if "maps" not in d:
+        if "plots" in d:
             continue
 
         print("Calculating plots for {}".format(d))
@@ -146,7 +156,7 @@ def evaluate_comp(data_folder, gt_path=None, map_type=None):
         eval_quality_csv_file.parent.mkdir(parents=True, exist_ok=True)  
         eval_coverage_csv_file.parent.mkdir(parents=True, exist_ok=True)  
 
-        if gt_path is not None: # ground truth is provided so calculate evaluations ans save to csv
+        if gt_path is not None: #not eval_quality_csv_file.exists(): # ground truth is provided so calculate evaluations ans save to csv
             # create empty csv files
             map_files = sorted(glob(os.path.join(curr_data_dir,"**","maps", "*."+map_type), recursive=True), key=os.path.getctime)
             save_metrics_csv(eval_quality_csv_file, eval_coverage_csv_file, map_files, gt_path)
@@ -155,7 +165,11 @@ def evaluate_comp(data_folder, gt_path=None, map_type=None):
 
         # now that we have data saved in csv's at respective paths , lets draw plots
         #plot_and_save_metrics(None, quality_metrics_fig[1], ""):
-        label = d[:d.find("_maps")]
+        
+        #save_mean_csv(eval_quality_csv_file)
+        #save_mean_csv(eval_coverage_csv_file)
+
+        label = d#d[:d.find("_maps")]
         plot_metrics(read_plot_data_csv(eval_quality_csv_file),quality_metrics_axs, label=label)
         plot_metrics(read_plot_data_csv(eval_coverage_csv_file),coverage_metrics_axs, label=label)
     
