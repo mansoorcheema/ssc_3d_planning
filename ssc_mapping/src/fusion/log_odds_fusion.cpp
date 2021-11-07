@@ -11,7 +11,7 @@ LogOddsFusion::LogOddsFusion(float pred_conf, float max_weight, float min_prob, 
 LogOddsFusion::LogOddsFusion(const BaseFusion::Config& config)
     : LogOddsFusion(config.pred_conf, config.max_weight, config.min_prob, config.max_prob) {}
 
-void LogOddsFusion::fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence) {
+void LogOddsFusion::fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence, float weight) {
     voxel->observed = true;
     //=================================
     // Fuse Semantics - Like SCFusion

@@ -44,6 +44,7 @@ class SSCServer {
 
    private:
     bool publish_pointclouds_on_update_;
+    float decay_weight_std_;
     std::string world_frame_;
     std::string ssc_topic_;
     std::shared_ptr<SSCMap> ssc_map_;

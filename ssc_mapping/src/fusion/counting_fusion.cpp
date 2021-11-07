@@ -11,7 +11,7 @@ CountingFusion::CountingFusion(float pred_conf, float max_weight, float prob_occ
 CountingFusion::CountingFusion(const BaseFusion::Config& config)
     : CountingFusion(config.pred_conf, config.max_weight, config.prob_occupied, config.prob_free, config.min_prob, config.max_prob) {}
 
-void CountingFusion::fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence) {
+void CountingFusion::fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence, float weight) {
     voxel->observed = true;
     // Note: is contrast to log odds, scfusion now counting is also used
     // for class 0 for this counting based fusion strategy

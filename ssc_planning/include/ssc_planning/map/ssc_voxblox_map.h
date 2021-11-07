@@ -48,7 +48,7 @@ class SSCVoxbloxOccupancyMap : public OccupancyMap {
 
   voxblox::EsdfServer& getESDFServer();
 
- protected:
+ public:
   static ModuleFactoryRegistry::Registration<SSCVoxbloxOccupancyMap> registration;
 
   // esdf server that contains the map, subscribe to external ESDF/TSDF updates

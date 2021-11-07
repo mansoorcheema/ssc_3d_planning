@@ -17,7 +17,7 @@ class OccupancyFusion : public BaseFusion {
 
     OccupancyFusion(float pred_conf, float max_weight, float prob_occupied, float prob_free, float prob_min, float prob_max);
 
-    virtual void fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence = 0.f) override;
+    virtual void fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence = 0.f, float weight=0.0f) override;
 
    private:
     float min_log_prob_; // minumim log probability

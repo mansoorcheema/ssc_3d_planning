@@ -35,6 +35,7 @@ void SSCVoxbloxOccupancyMap::setupFromParamMap(Module::ParamMap* param_map) {
     setParam<float>(param_map, "prob_free", &fusion_config.prob_free, fusion_config.prob_free);
     setParam<float>(param_map, "min_prob", &fusion_config.min_prob, fusion_config.min_prob);
     setParam<float>(param_map, "max_prob", &fusion_config.max_prob, fusion_config.max_prob);
+    setParam<float>(param_map, "decay_weight_std", &fusion_config.decay_weight_std, fusion_config.decay_weight_std);
     setParam<std::string>(param_map, "fusion_strategy", &fusion_config.fusion_strategy, fusion_config.fusion_strategy);
     setParam<bool>(param_map, "use_ssc_planning", &use_ssc_planning_, false);
     setParam<bool>(param_map, "use_ssc_information_planning", &use_ssc_information_planning_, true);

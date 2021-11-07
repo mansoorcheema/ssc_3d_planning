@@ -58,7 +58,8 @@
    <param name="ssc_voxel_size" value="$(arg voxel_size)" />
    <param name="ssc_voxels_per_side" value="$(arg voxels_per_side)" />
    <param name="fusion_strategy" value="occupancy_fusion" />
-   <param name="fusion_prob_free" value="0.475" />  
+   <param name="decay_weight_std" value="5" />
+   <param name="fusion_prob_free" value="0.45" />  
    <param name="fusion_prob_occupied" value="0.6775" />  
    <param name="fusion_max_weight" value="30.0" />   
    <param name="fusion_pred_conf" value="0.75" />   

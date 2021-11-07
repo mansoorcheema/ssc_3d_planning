@@ -12,7 +12,7 @@ SCFusion::SCFusion(float pred_conf, float max_weight, float prob_occupied, float
 SCFusion::SCFusion(const BaseFusion::Config& config)
     : SCFusion(config.pred_conf, config.max_weight, config.prob_occupied, config.prob_free, config.min_prob, config.max_prob) {}
 
-void SCFusion::fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence) {
+void SCFusion::fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence, float weight) {
     // only fuse label if its an object
     if (predicted_label > 0) {
         if (!voxel->observed || voxel->label > 0) {  // fuse only if the voxel is unknown or occupied

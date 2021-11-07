@@ -28,7 +28,7 @@ cs_add_executable(exploration_planner_node
         src/planner/exploration_planner_node.cpp
 )
 
-target_link_libraries(exploration_planner_node ${catkin_LIBRARIES})
+target_link_libraries(exploration_planner_node  ${PROJECT_NAME} ${catkin_LIBRARIES})
 #target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} ssc_mapping )
 
 cs_install()

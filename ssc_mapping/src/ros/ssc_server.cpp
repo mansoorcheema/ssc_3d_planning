@@ -15,7 +15,7 @@
 namespace voxblox {
 
 SSCServer::SSCServer(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private, const ssc_fusion::BaseFusion::Config& fusion_config,  const SSCMap::Config& config)
-    : nh_(nh), nh_private_(nh_private), publish_pointclouds_on_update_(false), ssc_topic_("ssc"), world_frame_("odom") {
+    : nh_(nh), nh_private_(nh_private), publish_pointclouds_on_update_(false), ssc_topic_("ssc"), world_frame_("odom"), decay_weight_std_(fusion_config.decay_weight_std) {
     ssc_map_.reset(new SSCMap(config));
 
     if (fusion_config.fusion_strategy.compare(ssc_fusion::strategy::naive) == 0) {
@@ -62,6 +62,7 @@ ssc_fusion::BaseFusion::Config SSCServer::getFusionConfigROSParam(const ros::Nod
     nh_private.param("fusion_min_prob", fusion_config.min_prob, fusion_config.min_prob);
     nh_private.param("fusion_max_prob", fusion_config.max_prob, fusion_config.max_prob);
     nh_private.param("fusion_strategy", fusion_config.fusion_strategy, fusion_config.fusion_strategy);
+    nh_private.param("decay_weight_std", fusion_config.decay_weight_std, fusion_config.decay_weight_std);
 
     return fusion_config;
 }
@@ -98,6 +99,10 @@ void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
         LOG(WARNING) << "Outlier pose detected with origin at " << msg->origin_z << ". Skipping..";
         return;
     }
+
+    auto exp_decay_weight = [](double x, double y, double z, double std_dev) {
+        return exp(-0.5 * (1.0 / std_dev) * sqrt((x * x) + (y * y) + (z * z)));
+    };
 
     // todo - resize voxels to full size? Resize voxel grid from 64x36x64 to 240x144x240
     // todo - update the  ssc_msgs::SSCGrid to contain the scale instead of hard coding
@@ -140,6 +145,8 @@ void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
                 float free_space_confidence = msg->data[idx] - predicted_label;
                 float occupied_confidence = 1 - free_space_confidence;
 
+                float weight = decay_weight_std_ > 0 ? exp_decay_weight(x, y, z, decay_weight_std_) : 1;
+
                 // transform from grid coordinate system to world coordinate system
                 uint32_t world_orient_x = z;  // still uses scale of grid though rotation is in world coords
                 uint32_t world_orient_y = x;
@@ -166,7 +173,7 @@ void SSCServer::sscCallback(const ssc_msgs::SSCGrid::ConstPtr& msg) {
                     voxel = &block->getVoxelByVoxelIndex(local_voxel_idx);
                 }
 
-                base_fusion_->fuse(voxel, predicted_label, occupied_confidence);
+                base_fusion_->fuse(voxel, predicted_label, occupied_confidence, weight);
             }
         }
     }

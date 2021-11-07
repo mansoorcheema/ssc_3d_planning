@@ -13,7 +13,7 @@ OccupancyFusion::OccupancyFusion(float pred_conf, float max_weight, float prob_o
 OccupancyFusion::OccupancyFusion(const BaseFusion::Config& config)
     : OccupancyFusion(config.pred_conf, config.max_weight, config.prob_occupied, config.prob_free, config.min_prob, config.max_prob) {}
 
-void OccupancyFusion::fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence) {
+void OccupancyFusion::fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence, float weight) {
     voxel->observed = true;
     if (predicted_label > 0) {
         if (predicted_label == voxel->label) {
@@ -30,10 +30,13 @@ void OccupancyFusion::fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_lab
     float log_odds_update = 0;
     if (predicted_label > 0) {
         // occupied voxel
-        log_odds_update = voxblox::logOddsFromProbability(prob_occupied_);
+        float prob_new = ((prob_occupied_ - 0.5f) * weight )+ 0.5f;
+        log_odds_update = voxblox::logOddsFromProbability(prob_new);
     } else {
         // free voxel
-        log_odds_update = voxblox::logOddsFromProbability(prob_free_);
+
+        float prob_new = ((prob_free_ - 0.5f) * weight) + 0.5f;
+        log_odds_update = voxblox::logOddsFromProbability(prob_new);
     }
 
     voxel->probability_log =

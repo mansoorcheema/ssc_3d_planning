@@ -8,7 +8,7 @@
   <arg name="ray_length" default="5.0"/>
   <arg name="method" default="merged"/>
   <arg name="verbose_voxblox" default="false"/>
-  <arg name="fusion_strategy" default="naive"/>
+  <arg name="fusion_strategy" default="occupancy_fusion"/>
   <arg name="eval_directory" default="/Data/simulations/Data"/>
   <param name="/use_sim_time" value="true"/>
  
@@ -37,6 +37,7 @@
    <param name="ssc_voxel_size" value="$(arg voxel_size)" />
    <param name="ssc_voxels_per_side" value="$(arg voxels_per_side)" />
    <param name="fusion_strategy" value="$(arg fusion_strategy)" />
+   <param name="decay_weight_std" value="0.0" />
    <param name="fusion_prob_free" value="0.475" />  
    <param name="fusion_prob_occupied" value="0.6775" />  
    <param name="fusion_max_weight" value="30.0" />   
@@ -45,9 +46,9 @@
    <param name="fusion_max_prob" value="0.97" /> 
  </node>
 
- <node pkg="rosbag" type="play" name="player" required="true" output="screen" args=" --rate 1.5 --clock /Data/simulations/Data/subset_ssc_prob.bag"/>
+ <node pkg="rosbag" type="play" name="player" required="true" output="screen" args=" --rate 1.0 --clock /Data/simulations/Data/subset.bag"/>
 
- <node name="eval_data_node" pkg="active_3d_planning_app_reconstruction" type="eval_data_node.py" output="screen" required="true">
+ <!-- <node name="eval_data_node" pkg="active_3d_planning_app_reconstruction" type="eval_data_node.py" output="screen" required="true">
       <remap from="ue_out_in" to="/airsim_drone/RGB_pcl" />
       <remap from="collision" to="/airsim_drone/collision" />
       <param name="ns_planner" value="/planner_node" />
@@ -61,7 +62,7 @@
       <param name="gt_map_path" value="/home/mansoor/flat_filled_free.tsdf" />
       <param name="eval_frequency" value="30" />
       <param name="time_limit" value="15" />
-    </node>
+    </node> -->
 
 
   <!-- RVIZ Visualization -->

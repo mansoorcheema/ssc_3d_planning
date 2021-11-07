@@ -39,6 +39,7 @@ void SSCVoxbloxCriteriaMap::setupFromParamMap(Module::ParamMap* param_map) {
     setParam<float>(param_map, "prob_free", &fusion_config.prob_free, fusion_config.prob_free);
     setParam<float>(param_map, "min_prob", &fusion_config.min_prob, fusion_config.min_prob);
     setParam<float>(param_map, "max_prob", &fusion_config.max_prob, fusion_config.max_prob);
+    setParam<float>(param_map, "decay_weight_std", &fusion_config.decay_weight_std, fusion_config.decay_weight_std);
     setParam<std::string>(param_map, "fusion_strategy", &fusion_config.fusion_strategy, fusion_config.fusion_strategy);
     setParam<std::string>(param_map, "ssc_criteria", &ssc_criteria, ssc_criteria);
     setParam<float>(param_map, "criteria_threshold", &ssc_criteria_threshold, ssc_criteria_threshold);

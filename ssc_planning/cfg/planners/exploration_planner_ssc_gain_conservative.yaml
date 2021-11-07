@@ -23,6 +23,7 @@ map:
   prob_free: 0.475
   min_prob: 0.12
   max_prob: 0.97
+  decay_weight_std: 0.0
   use_ssc_planning: false
   use_ssc_information_planning: true
   use_voxblox_information_planning: true
@@ -36,7 +37,7 @@ system_constraints:
   a_max: 3.0
   yaw_rate_max: 2.6
   yaw_accel_max: 2.6
-  collision_radius: 0.2
+  collision_radius: 0.24
 
 trajectory_generator:
   collision_optimistic: false
@@ -85,7 +86,7 @@ trajectory_evaluator:
       type: "SSCVoxelEvaluator"
       accurate_frontiers: true
       new_voxel_weight: 1.0
-      frontier_voxel_weight: 1.5
+      frontier_voxel_weight: 1.0
       max_log_prob: 0.9
       voxel_log_prob_weight: 0.2
       surface_frontiers: false

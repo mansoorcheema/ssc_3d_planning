@@ -28,7 +28,10 @@ class BaseFusion {
 
         // max weight for semantic label. Each measurement adds default prediction score. 
         // The max weight is clipped to this value.
-        float max_weight = 50.0f; 
+        float max_weight = 50.0f;
+
+        // Negative exponential weight decay standard deviatiaon for fusing far away completions
+        float decay_weight_std = 3.0f;  
 
         // default probability value for occupied voxelss
         float prob_occupied = 0.675f;
@@ -44,7 +47,7 @@ class BaseFusion {
         float max_prob = 0.97f;
     };
 
-    virtual void fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence = 0.51f) = 0;
+    virtual void fuse(voxblox::SSCOccupancyVoxel* voxel, uint predicted_label, float confidence = 0.51f, float weight=0.0f) = 0;
 };
 }  // namespace ssc_fusion
 

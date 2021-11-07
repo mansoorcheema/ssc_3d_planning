@@ -63,6 +63,13 @@ double SSCVoxelEvaluator::getVoxelValue(const Eigen::Vector3d& voxel,
   unsigned char voxel_state = map_->getVoxelState(voxel);
   if (voxel_state == map::OccupancyMap::OCCUPIED || voxel_state == map::OccupancyMap::FREE) {
     double gain = p_log_prob_weight_ * (p_max_log_prob_ - abs(map_->getVoxelLogProb(voxel)));
+
+    if (voxel_state == map::OccupancyMap::FREE) {
+        double distance = 0.0;
+        if (!map_->esdf_server_->getEsdfMapPtr()->getDistanceAtPosition(voxel, &distance)) {
+            gain += 0.2;
+        }
+    }
     if (gain > p_min_impact_factor_) {
       return gain;
     }
