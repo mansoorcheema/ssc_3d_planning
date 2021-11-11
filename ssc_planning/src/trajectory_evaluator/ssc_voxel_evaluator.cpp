@@ -17,6 +17,7 @@ void SSCVoxelEvaluator::setupFromParamMap(Module::ParamMap* param_map) {
   setParam<double>(param_map, "frontier_voxel_weight",
                    &p_frontier_voxel_weight_, 1.5);
   setParam<double>(param_map, "min_impact_factor", &p_min_impact_factor_, 0.0);
+  setParam<double>(param_map, "new_measured_voxel_weight", &p_new_measured_voxel_weight_, 0.2);
   setParam<double>(param_map, "new_voxel_weight", &p_new_voxel_weight_, 1.0);
   setParam<double>(param_map, "voxel_log_prob_weight", &p_log_prob_weight_, 0.2);
   setParam<double>(param_map, "max_log_prob", &p_max_log_prob_, voxblox::logOddsFromProbability(0.9f));
@@ -63,11 +64,11 @@ double SSCVoxelEvaluator::getVoxelValue(const Eigen::Vector3d& voxel,
   unsigned char voxel_state = map_->getVoxelState(voxel);
   if (voxel_state == map::OccupancyMap::OCCUPIED || voxel_state == map::OccupancyMap::FREE) {
     double gain = p_log_prob_weight_ * (p_max_log_prob_ - abs(map_->getVoxelLogProb(voxel)));
-
+    gain = std::max(gain, 0.0);
     if (voxel_state == map::OccupancyMap::FREE) {
         double distance = 0.0;
-        if (!map_->esdf_server_->getEsdfMapPtr()->getDistanceAtPosition(voxel, &distance)) {
-            gain += 0.2;
+        if (!map_->getESDFServer().getEsdfMapPtr()->getDistanceAtPosition(voxel, &distance)) {
+            gain += p_new_measured_voxel_weight_;//todo: use p_new_measured_voxel_weight_
         }
     }
     if (gain > p_min_impact_factor_) {

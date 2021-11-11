@@ -31,7 +31,7 @@ class BaseFusion {
         float max_weight = 50.0f;
 
         // Negative exponential weight decay standard deviatiaon for fusing far away completions
-        float decay_weight_std = 3.0f;  
+        float decay_weight_std = 0.0f;  
 
         // default probability value for occupied voxelss
         float prob_occupied = 0.675f;

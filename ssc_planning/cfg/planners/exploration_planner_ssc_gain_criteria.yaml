@@ -14,20 +14,11 @@ visualize_gain: true
 highlight_executed_trajectory: true
 
 map:
-  type: "SSCVoxbloxOccupancyMap"
+  type: "SSCVoxbloxCriteriaMap"
   voxel_size: 0.08
-  fusion_strategy: "occupancy_fusion"
-  pred_conf: 0.75
-  max_weight: 30.0
-  prob_occupied: 0.68
-  prob_free: 0.475
-  min_prob: 0.12
-  max_prob: 0.97
-  decay_weight_std: 0.0
-  use_ssc_planning: false
-  use_ssc_information_planning: true
-  use_voxblox_information_planning: true
-  use_voxblox_planning: true
+  ssc_criteria: "confidence"
+  criteria_threshold: 0.95
+  fusion_strategy: occupancy_fusion
 
 # map:
 #   type: "VoxbloxMap"
@@ -37,7 +28,7 @@ system_constraints:
   a_max: 3.0
   yaw_rate_max: 2.6
   yaw_accel_max: 2.6
-  collision_radius: 0.12
+  collision_radius: 0.3
 
 trajectory_generator:
   collision_optimistic: false
@@ -47,8 +38,8 @@ trajectory_generator:
   type: "RRTStar"
   all_semgents_feasible: false
   crop_segments: true
-  crop_margin: 0.1
-  crop_min_length: 0.1
+  crop_margin: 0.2
+  crop_min_length: 0.2
   min_path_length: 0.2
   max_extension_range: 5
   maximum_tries: 1000

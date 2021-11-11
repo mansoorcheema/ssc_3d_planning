@@ -1,5 +1,4 @@
 #include "ssc_planning/map/ssc_voxblox_criteria_map.h"
-
 #include <voxblox/core/common.h>
 #include <voxblox_ros/ros_params.h>
 #include <active_3d_planning_core/data/system_constraints.h>
@@ -10,12 +9,7 @@ namespace map {
 ModuleFactoryRegistry::Registration<SSCVoxbloxCriteriaMap> SSCVoxbloxCriteriaMap::registration(
     "SSCVoxbloxCriteriaMap");
 
-SSCVoxbloxCriteriaMap::SSCVoxbloxCriteriaMap(PlannerI& planner) : OccupancyMap(planner) {}
-
-voxblox::SSCServer& SSCVoxbloxCriteriaMap::getSSCServer() { return *ssc_server_; }
-
-
-voxblox::EsdfServer& SSCVoxbloxCriteriaMap::getESDFServer() { return *esdf_server_; }
+SSCVoxbloxCriteriaMap::SSCVoxbloxCriteriaMap(PlannerI& planner) : SSCVoxbloxOccupancyMap(planner) {}
 
 void SSCVoxbloxCriteriaMap::setupFromParamMap(Module::ParamMap* param_map) {
     // create an esdf server
@@ -78,25 +72,22 @@ void SSCVoxbloxCriteriaMap::setupFromParamMap(Module::ParamMap* param_map) {
 bool SSCVoxbloxCriteriaMap::isTraversable(const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation) {
     double collision_radius = planner_.getSystemConstraints().collision_radius;
 
-    if (ssc_utilization_criteria_->criteriaVerify(*ssc_server_->getSSCMapPtr(), position)) {
-        // The criteria to use ssc map is met. 
+    // the criteria to use ssc map is not met. Using measured map instead
+    double distance = 0.0;
+    if (esdf_server_->getEsdfMapPtr()->getDistanceAtPosition(position, &distance)) {
+        // This means the voxel is observed
+        return (distance > collision_radius);
+    } else if (ssc_utilization_criteria_->criteriaVerify(*ssc_server_->getSSCMapPtr(), position)) {
+        // The criteria to use ssc map is met.
         std::vector<Eigen::Vector3d> neighbouring_points;
         voxblox::utils::getSurroundingVoxelsSphere(position, c_voxel_size_, collision_radius, &neighbouring_points);
 
-        for(auto point: neighbouring_points) {
-            if(getVoxelState(point) == OccupancyMap::OCCUPIED) {
+        for (auto point : neighbouring_points) {
+            if (getVoxelState(point) == OccupancyMap::OCCUPIED) {
                 return false;
             }
         }
         return true;
-        
-    } else {
-        // the criteria to use ssc map is not met. Using measured map instead
-        double distance = 0.0;
-        if (esdf_server_->getEsdfMapPtr()->getDistanceAtPosition(position, &distance)) {
-            // This means the voxel is observed
-            return (distance > collision_radius);
-        }
     }
 
     return false;
@@ -132,26 +123,6 @@ unsigned char SSCVoxbloxCriteriaMap::getVoxelState(const Eigen::Vector3d& point)
     return OccupancyMap::UNKNOWN;
 }
 
-// get voxel size
-double SSCVoxbloxCriteriaMap::getVoxelSize() { return c_voxel_size_; }
-
-// get the center of a voxel from input point
-bool SSCVoxbloxCriteriaMap::getVoxelCenter(Eigen::Vector3d* center,
-                                const Eigen::Vector3d& point) {
-  voxblox::BlockIndex block_id = ssc_server_->getSSCMapPtr()
-                                     ->getSSCLayerPtr()
-                                     ->computeBlockIndexFromCoordinates(
-                                         point.cast<voxblox::FloatingPoint>());
-  *center = voxblox::getOriginPointFromGridIndex(block_id, c_block_size_)
-                .cast<double>();
-  voxblox::VoxelIndex voxel_id =
-      voxblox::getGridIndexFromPoint<voxblox::VoxelIndex>(
-          (point - *center).cast<voxblox::FloatingPoint>(),
-          1.0 / c_voxel_size_);
-  *center += voxblox::getCenterPointFromGridIndex(voxel_id, c_voxel_size_)
-                 .cast<double>();
-  return true;
-}
 
 // criteria functions
 bool ConfidenceCriteria::criteriaVerify(const voxblox::SSCMap & ssc_map, const Eigen::Vector3d& position) {

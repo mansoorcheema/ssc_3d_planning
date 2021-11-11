@@ -36,7 +36,7 @@ system_constraints:
   a_max: 3.0
   yaw_rate_max: 2.6
   yaw_accel_max: 2.6
-  collision_radius: 0.2
+  collision_radius: 0.1
 
 trajectory_generator:
   collision_optimistic: false

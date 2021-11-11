@@ -41,6 +41,7 @@ class SSCVoxelEvaluator : public FrontierEvaluator {
   map::SSCVoxbloxOccupancyMap * map_;
 
   // params
+  double p_new_measured_voxel_weight_; // weight for voxel observed in sscmap but not observed in measured tsdf map
   double p_min_impact_factor_;  // Minimum expected change, the gain is set at 0
   // here.
   double p_new_voxel_weight_;  // Multiply unobserved voxels by this weight to

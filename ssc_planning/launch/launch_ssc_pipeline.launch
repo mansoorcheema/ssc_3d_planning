@@ -32,6 +32,17 @@
   <!-- airsim client -->
   <node name="airsim_simulator" pkg="unreal_airsim" type="airsim_simulator_node" required="true"  output="screen" args="-alsologtostderr">
      <rosparam file="$(find ssc_planning)/cfg/airsim.yaml"/>
+     <param name="kp_x" value="0.65"/>
+     <param name="kp_y" value="0.65"/>
+     <param name="kp_z" value="0.65"/>
+     <param name="kp_yaw" value="0.5"/>
+     <param name="kd_x" value="0.3"/>
+     <param name="kd_y" value="0.3"/>
+     <param name="kd_z" value="0.3"/>
+     <param name="kd_yaw" value="0.25"/>
+     <param name="max_vel_horz_abs" value="2.0"/>
+     <param name="max_vel_vert_abs" value="2.0"/>
+     <param name="max_yaw_rate_degree" value="10.0"/>
   </node>
 
   
@@ -79,8 +90,8 @@
       <param name="eval_directory" value="$(arg eval_directory)" />
       <param name="gt_map_path" value="/home/mansoor/flat_filled_free.tsdf" />
       <param name="eval_frequency" value="30" />
-      <param name="time_limit" value="15" />
-    </node>
+      <param name="time_limit" value="25" />
+  </node>
 
   <node name="planner_node" pkg="ssc_planning" type="exploration_planner_node" args="-alsologtostderr" required="true" output="screen" >
       <remap from="planner_node/esdf_map_in" to="/voxblox_node/esdf_map_out" />
