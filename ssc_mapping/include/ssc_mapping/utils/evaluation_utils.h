@@ -424,4 +424,34 @@ void split_observed_unobserved_voxels(const voxblox::Layer<VoxelType>& layer, co
     }
 }
 
+using IndexSet = voxblox::LongIndexSet;
+typedef std::tuple<IndexSet, IndexSet, IndexSet, IndexSet, IndexSet, IndexSet, IndexSet, IndexSet> VoxelEvalData;
+
+template <typename VoxelTypeA, typename VoxelTypeB>
+VoxelEvalData get_voxel_data_from_layer(std::shared_ptr<voxblox::Layer<VoxelTypeA>> ground_truth_layer,
+                                        std::shared_ptr<voxblox::Layer<VoxelTypeB>> observed_layer,
+                                        bool refine_ob_layer) {
+    CHECK(ground_truth_layer->voxel_size() == observed_layer->voxel_size())
+        << "Error! Observed Layer and groundtruth layers should have same voxel size!";
+
+    if (refine_ob_layer) {
+        LOG(INFO) << "Updating observed layer by discarding voxels not observed in ground truth.";
+        refine_observed_layer(*ground_truth_layer, observed_layer);
+    }
+
+    IndexSet gt_occ_voxels, gt_free_voxels;
+    get_free_and_occupied_voxels_from_layer(*ground_truth_layer, &gt_occ_voxels, &gt_free_voxels);
+
+    IndexSet map_obs_occ_voxels, map_obs_free_voxels;
+    get_free_and_occupied_voxels_from_layer(*observed_layer, &map_obs_occ_voxels, &map_obs_free_voxels);
+
+    IndexSet gt_obs_occ, gt_unobs_occ;
+    split_observed_unobserved_voxels(*observed_layer, gt_occ_voxels, &gt_obs_occ, &gt_unobs_occ);
+
+    IndexSet gt_obs_free, gt_unobs_free;
+    split_observed_unobserved_voxels(*observed_layer, gt_free_voxels, &gt_obs_free, &gt_unobs_free);
+
+    return {gt_occ_voxels, gt_free_voxels, map_obs_occ_voxels, map_obs_free_voxels,
+            gt_obs_occ,    gt_obs_free,    gt_unobs_occ,       gt_unobs_free};
+}
 #endif //SSC_UTILS_H_

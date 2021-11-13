@@ -46,9 +46,9 @@
    <param name="fusion_max_prob" value="0.97" /> 
  </node>
 
- <node pkg="rosbag" type="play" name="player" required="true" output="screen" args=" --rate 1.0 --clock /Data/simulations/Data/subset.bag"/>
+ <node pkg="rosbag" type="play" name="player" required="true" output="screen" args=" --rate 1.0 --clock /Data/simulations/Data/subset_ssc_prob.bag"/>
 
- <!-- <node name="eval_data_node" pkg="active_3d_planning_app_reconstruction" type="eval_data_node.py" output="screen" required="true">
+ <node name="eval_data_node" pkg="active_3d_planning_app_reconstruction" type="eval_data_node.py" output="screen" required="true">
       <remap from="ue_out_in" to="/airsim_drone/RGB_pcl" />
       <remap from="collision" to="/airsim_drone/collision" />
       <param name="ns_planner" value="/planner_node" />
@@ -59,10 +59,11 @@
       <param name="startup_timeout" value="30.0" />
       <param name="evaluate" value="true" />
       <param name="eval_directory" value="$(arg eval_directory)" />
-      <param name="gt_map_path" value="/home/mansoor/flat_filled_free.tsdf" />
+      <param name="gt_map_path" value="/home/mansoor/flat_filled_free_2.tsdf" />
       <param name="eval_frequency" value="30" />
       <param name="time_limit" value="15" />
-    </node> -->
+      <param name="start_planner" value="false" />
+    </node>
 
 
   <!-- RVIZ Visualization -->

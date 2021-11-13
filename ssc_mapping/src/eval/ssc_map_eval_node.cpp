@@ -1,37 +1,17 @@
+/**
+ * Note: 
+ * Calculates coverage and quality metrics for a observed or predicted layer. Accepts 
+ * a target layer and a ground truth layer. The quality and coverage metrics are
+ * appended to the input csv files.
+ * This code was also tested with eval_plots.py for automating plots
+ * across runs and calcuating aggregated metrics. I
+ * The code expects the file path provided already exists.
+ * For calculating quality metrics specifically predicted layer while considering
+ * observed tsdf voxels, use ssc_map_eval_quality_node.
+ */ 
 #include <tuple>
 #include "ssc_mapping/eval/map_eval.h"
 #include "ssc_mapping/utils/evaluation_utils.h"
-
-using IndexSet = voxblox::LongIndexSet;
-typedef std::tuple<IndexSet, IndexSet, IndexSet, IndexSet, IndexSet, IndexSet, IndexSet, IndexSet> VoxelEvalData;
-
-template <typename VoxelTypeA, typename VoxelTypeB>
-VoxelEvalData get_voxel_data_from_layer(std::shared_ptr<voxblox::Layer<VoxelTypeA>> ground_truth_layer,
-                                        std::shared_ptr<voxblox::Layer<VoxelTypeB>> observed_layer,
-                                        bool refine_ob_layer) {
-    CHECK(ground_truth_layer->voxel_size() == observed_layer->voxel_size())
-        << "Error! Observed Layer and groundtruth layers should have same voxel size!";
-
-    if (refine_ob_layer) {
-        LOG(INFO) << "Updating observed layer by discarding voxels not observed in ground truth.";
-        refine_observed_layer(*ground_truth_layer, observed_layer);
-    }
-
-    IndexSet gt_occ_voxels, gt_free_voxels;
-    get_free_and_occupied_voxels_from_layer(*ground_truth_layer, &gt_occ_voxels, &gt_free_voxels);
-
-    IndexSet map_obs_occ_voxels, map_obs_free_voxels;
-    get_free_and_occupied_voxels_from_layer(*observed_layer, &map_obs_occ_voxels, &map_obs_free_voxels);
-
-    IndexSet gt_obs_occ, gt_unobs_occ;
-    split_observed_unobserved_voxels(*observed_layer, gt_occ_voxels, &gt_obs_occ, &gt_unobs_occ);
-
-    IndexSet gt_obs_free, gt_unobs_free;
-    split_observed_unobserved_voxels(*observed_layer, gt_free_voxels, &gt_obs_free, &gt_unobs_free);
-
-    return {gt_occ_voxels, gt_free_voxels, map_obs_occ_voxels, map_obs_free_voxels,
-            gt_obs_occ,    gt_obs_free,    gt_unobs_occ,       gt_unobs_free};
-}
 
 std::string get_base_file_name(std::string path) {
     return path.substr(path.find_last_of("/\\") + 1, path.find_last_of(".") - path.find_last_of("/\\") - 1);
